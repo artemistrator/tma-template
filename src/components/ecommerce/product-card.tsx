@@ -21,6 +21,15 @@ export interface ProductCardProps {
   onAddToCart?: () => void;
   onClick?: () => void;
   className?: string;
+  props?: {
+    productId?: string;
+    name?: string;
+    price?: number;
+    image?: string;
+    description?: string;
+    category?: string;
+    badge?: string;
+  };
 }
 
 /**
@@ -28,17 +37,27 @@ export interface ProductCardProps {
  * Displays product info with add to cart functionality
  */
 export function ProductCard({
-  productId,
-  name,
-  price,
-  image,
-  description,
-  category,
-  badge,
+  productId: propProductId,
+  name: propName,
+  price: propPrice,
+  image: propImage,
+  description: propDescription,
+  category: propCategory,
+  badge: propBadge,
   onAddToCart,
   onClick,
   className,
+  props,
 }: ProductCardProps) {
+  // Support both direct props and props object
+  const productId = props?.productId || propProductId;
+  const name = props?.name || propName;
+  const price = props?.price || propPrice;
+  const image = props?.image || propImage;
+  const description = props?.description || propDescription;
+  const category = props?.category || propCategory;
+  const badge = props?.badge || propBadge;
+
   const addItem = useCartStore((state) => state.addItem);
   const { hapticFeedback } = useTelegramContext();
 

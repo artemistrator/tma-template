@@ -17,6 +17,10 @@ interface PaymentButtonProps {
   disabled?: boolean;
   className?: string;
   variant?: 'default' | 'telegram' | 'outline';
+  props?: {
+    text?: string;
+    variant?: 'default' | 'telegram' | 'outline';
+  };
 }
 
 /**
@@ -77,10 +81,26 @@ export function PaymentButton({
 
   const handleTelegramPayment = async () => {
     return new Promise<void>((resolve) => {
-      // In a real implementation, you would:
-      // 1. Create an invoice on your backend
-      // 2. Get the invoice URL from your backend
-      // 3. Call Telegram.WebApp.openInvoice(invoiceUrl, callback)
+      /**
+       * TODO: Integrate Telegram Payment API
+       * 
+       * Backend integration example:
+       * 1. Create invoice on backend:
+       *    const response = await fetch('/api/create-invoice', {
+       *      method: 'POST',
+       *      body: JSON.stringify({ items, total, shippingAddress })
+       *    });
+       *    const { invoiceUrl } = await response.json();
+       * 
+       * 2. Open Telegram invoice:
+       *    window.Telegram?.WebApp?.openInvoice(invoiceUrl, (status) => {
+       *      if (status === 'paid') {
+       *        hapticFeedback.success();
+       *        clearCart();
+       *        onPaymentSuccess?.(paymentId);
+       *      }
+       *    });
+       */
       
       // Mock payment flow for demo
       setTimeout(() => {
@@ -95,8 +115,20 @@ export function PaymentButton({
   };
 
   const handleWebPayment = async () => {
-    // Implement your own payment logic here
-    // This could integrate with Stripe, PayPal, etc.
+    /**
+     * TODO: Integrate payment gateway (Stripe, PayPal, etc.)
+     * 
+     * Example integration:
+     * 1. Create payment intent on backend
+     * 2. Use Stripe.js or PayPal SDK to process payment
+     * 3. Handle success/error callbacks
+     * 
+     * Stripe example:
+     *    const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY);
+     *    const { error } = await stripe.confirmCardPayment(clientSecret, {
+     *      payment_method: { card: elements.getElement(CardElement) }
+     *    });
+     */
     
     return new Promise<void>((resolve) => {
       setTimeout(() => {

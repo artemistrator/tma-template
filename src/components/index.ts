@@ -4,6 +4,7 @@ import { registerComponent } from '@/lib/renderer/component-registry';
 import { Screen } from './core/screen';
 import { Header } from './core/header';
 import { Modal } from './core/modal';
+import { BottomNav } from './core/bottom-nav';
 import { ProductCard } from './ecommerce/product-card';
 import { ProductList } from './ecommerce/product-list';
 import { PromoSlider } from './ecommerce/promo-slider';
@@ -22,6 +23,7 @@ export function initializeComponents() {
   registerComponent('Screen', Screen as unknown as React.ComponentType<ComponentFactoryProps>);
   registerComponent('Header', Header as unknown as React.ComponentType<ComponentFactoryProps>);
   registerComponent('Modal', Modal as unknown as React.ComponentType<ComponentFactoryProps>);
+  registerComponent('BottomNav', BottomNav as unknown as React.ComponentType<ComponentFactoryProps>);
   
   // E-commerce components
   registerComponent('ProductCard', ProductCard as unknown as React.ComponentType<ComponentFactoryProps>);
@@ -33,7 +35,7 @@ export function initializeComponents() {
   registerComponent('PaymentButton', PaymentButton as unknown as React.ComponentType<ComponentFactoryProps>);
   
   console.log('Components initialized:', [
-    'Screen', 'Header', 'Modal',
+    'Screen', 'Header', 'Modal', 'BottomNav',
     'ProductCard', 'ProductList', 'PromoSlider',
     'Cart', 'CartSummary', 'CheckoutForm', 'PaymentButton'
   ]);
@@ -43,6 +45,7 @@ export function initializeComponents() {
 export { Screen } from './core/screen';
 export { Header } from './core/header';
 export { Modal } from './core/modal';
+export { BottomNav } from './core/bottom-nav';
 export { ProductCard } from './ecommerce/product-card';
 export { ProductList } from './ecommerce/product-list';
 export { PromoSlider } from './ecommerce/promo-slider';

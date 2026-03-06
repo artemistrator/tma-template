@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Page, ComponentInstance } from '@/lib/schema/mini-app-schema';
 import { renderComponents } from './component-registry';
 import { useTelegramContext } from '@/lib/telegram/telegram-provider';
+import { BottomNav } from '@/components/core/bottom-nav';
 
 interface PageRendererProps {
   page: Page;
@@ -66,7 +67,7 @@ export function PageRenderer({ page, dataContext = {}, onNavigate }: PageRendere
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container mx-auto px-4 py-3">
           <h1 className="text-xl font-semibold">{page.title}</h1>
@@ -76,6 +77,8 @@ export function PageRenderer({ page, dataContext = {}, onNavigate }: PageRendere
       <main className="container mx-auto px-4 py-6">
         {renderComponents(page.components || [], dataContext)}
       </main>
+
+      <BottomNav currentPage={page.id} onNavigate={onNavigate || (() => {})} />
     </div>
   );
 }

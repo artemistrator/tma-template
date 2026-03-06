@@ -16,6 +16,11 @@ interface CartProps {
   onCheckout?: () => void;
   onProductClick?: (productId: string) => void;
   className?: string;
+  props?: {
+    showEmpty?: boolean;
+    emptyMessage?: string;
+  };
+  showMockData?: boolean;
 }
 
 /**

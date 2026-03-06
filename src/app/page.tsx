@@ -5,6 +5,7 @@ import { PageRenderer } from '@/lib/renderer/page-renderer';
 import { MiniAppSchemaType, validateMiniAppSchema } from '@/lib/schema/mini-app-schema';
 import { initializeComponents } from '@/components';
 import demoConfig from '@/config/demo.json';
+import { useCartItemCount } from '@/store/cart-store';
 
 // Force dynamic rendering to avoid SSR issues with window object
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,7 @@ export default function Home() {
   const [schema, setSchema] = useState<MiniAppSchemaType | null>(null);
   const [currentPageId, setCurrentPageId] = useState('home');
   const [isMounted, setIsMounted] = useState(false);
+  const cartItemCount = useCartItemCount();
 
   useEffect(() => {
     // Initialize components on mount
@@ -30,8 +32,24 @@ export default function Home() {
     }
   }, []);
 
+  // Handle navigation from URL hash
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1);
+      if (hash && schema?.pages.find(p => p.id === hash)) {
+        setCurrentPageId(hash);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Check initial hash
+
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [schema]);
+
   const handleNavigate = (pageId: string) => {
     setCurrentPageId(pageId);
+    window.location.hash = pageId;
   };
 
   if (!isMounted || !schema) {
@@ -47,7 +65,7 @@ export default function Home() {
   return (
     <PageRenderer
       page={currentPage}
-      dataContext={{}}
+      dataContext={{ cartItemCount }}
       onNavigate={handleNavigate}
     />
   );
