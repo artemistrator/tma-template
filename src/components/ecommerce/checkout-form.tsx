@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useCartStore, ShippingAddress } from '@/store/cart-store';
+import { useCartStore, ShippingAddress, TelegramUser } from '@/store/cart-store';
 import { useTelegramContext } from '@/lib/telegram/telegram-provider';
+import { useTelegramUser } from '@/lib/telegram/use-telegram-user';
 
 interface CheckoutFormProps {
   id?: string;
-  onSubmit?: (address: ShippingAddress) => void;
+  onSubmit?: (address: ShippingAddress, user: TelegramUser) => void;
   className?: string;
 }
 
@@ -26,10 +27,12 @@ export function CheckoutForm({
   const { hapticFeedback, showAlert } = useTelegramContext();
   const shippingAddress = useCartStore((state) => state.shippingAddress);
   const setShippingAddress = useCartStore((state) => state.setShippingAddress);
+  const telegramUser = useCartStore((state) => state.telegramUser);
+  const { requestPhoneContact, hasPhone } = useTelegramUser();
 
   const [formData, setFormData] = React.useState<ShippingAddress>({
-    name: shippingAddress?.name || '',
-    phone: shippingAddress?.phone || '',
+    name: shippingAddress?.name || (telegramUser?.firstName ? `${telegramUser.firstName || ''} ${telegramUser.lastName || ''}`.trim() : ''),
+    phone: shippingAddress?.phone || telegramUser?.phone || '',
     address: shippingAddress?.address || '',
     city: shippingAddress?.city || '',
     zipCode: shippingAddress?.zipCode || '',
@@ -37,6 +40,7 @@ export function CheckoutForm({
   });
 
   const [errors, setErrors] = React.useState<Partial<Record<keyof ShippingAddress, string>>>({});
+  const [isRequestingPhone, setIsRequestingPhone] = React.useState(false);
 
   const validateField = (name: keyof ShippingAddress, value: string): string | null => {
     switch (name) {
@@ -98,7 +102,7 @@ export function CheckoutForm({
 
     // Save address and submit
     setShippingAddress(formData);
-    onSubmit?.(formData);
+    onSubmit?.(formData, telegramUser || {});
   };
 
   const inputClasses = "w-full";
@@ -135,18 +139,38 @@ export function CheckoutForm({
             <label htmlFor="phone" className="block text-sm font-medium mb-1">
               Phone Number *
             </label>
-            <Input
-              id="phone"
-              name="phone"
-              type="tel"
-              value={formData.phone}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={cn(inputClasses, errors.phone && "border-destructive")}
-              placeholder="+1 234 567 8900"
-            />
+            <div className="flex gap-2">
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={cn(inputClasses, errors.phone && "border-destructive")}
+                placeholder="+1 234 567 8900"
+              />
+              {!hasPhone && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={async () => {
+                    setIsRequestingPhone(true);
+                    hapticFeedback.impact('light');
+                    await requestPhoneContact();
+                    setIsRequestingPhone(false);
+                  }}
+                  disabled={isRequestingPhone}
+                >
+                  {isRequestingPhone ? '...' : 'Get from TG'}
+                </Button>
+              )}
+            </div>
             {errors.phone && (
               <p className="text-sm text-destructive mt-1">{errors.phone}</p>
+            )}
+            {hasPhone && (
+              <p className="text-xs text-green-600 mt-1">✓ Phone verified via Telegram</p>
             )}
           </div>
 

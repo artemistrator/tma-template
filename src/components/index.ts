@@ -12,6 +12,10 @@ import { Cart } from './ecommerce/cart';
 import { CartSummary } from './ecommerce/cart-summary';
 import { CheckoutForm } from './ecommerce/checkout-form';
 import { PaymentButton } from './ecommerce/payment-button';
+import { OrderSuccess } from './ecommerce/order-success';
+import { OrderFailed } from './ecommerce/order-failed';
+import { SearchBar } from './ecommerce/search-bar';
+import { FilterPanel } from './ecommerce/filter-panel';
 import type { ComponentFactoryProps } from '@/lib/renderer/component-registry';
 
 /**
@@ -33,11 +37,16 @@ export function initializeComponents() {
   registerComponent('CartSummary', CartSummary as unknown as React.ComponentType<ComponentFactoryProps>);
   registerComponent('CheckoutForm', CheckoutForm as unknown as React.ComponentType<ComponentFactoryProps>);
   registerComponent('PaymentButton', PaymentButton as unknown as React.ComponentType<ComponentFactoryProps>);
+  registerComponent('OrderSuccess', OrderSuccess as unknown as React.ComponentType<ComponentFactoryProps>);
+  registerComponent('OrderFailed', OrderFailed as unknown as React.ComponentType<ComponentFactoryProps>);
+  registerComponent('SearchBar', SearchBar as unknown as React.ComponentType<ComponentFactoryProps>);
+  registerComponent('FilterPanel', FilterPanel as unknown as React.ComponentType<ComponentFactoryProps>);
   
   console.log('Components initialized:', [
     'Screen', 'Header', 'Modal', 'BottomNav',
     'ProductCard', 'ProductList', 'PromoSlider',
-    'Cart', 'CartSummary', 'CheckoutForm', 'PaymentButton'
+    'Cart', 'CartSummary', 'CheckoutForm', 'PaymentButton',
+    'OrderSuccess', 'OrderFailed', 'SearchBar', 'FilterPanel'
   ]);
 }
 
@@ -53,3 +62,7 @@ export { Cart } from './ecommerce/cart';
 export { CartSummary } from './ecommerce/cart-summary';
 export { CheckoutForm } from './ecommerce/checkout-form';
 export { PaymentButton, PaymentStatus } from './ecommerce/payment-button';
+export { OrderSuccess } from './ecommerce/order-success';
+export { OrderFailed } from './ecommerce/order-failed';
+export { SearchBar } from './ecommerce/search-bar';
+export { FilterPanel } from './ecommerce/filter-panel';

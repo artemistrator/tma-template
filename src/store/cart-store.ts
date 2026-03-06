@@ -23,11 +23,32 @@ export interface ShippingAddress {
   country: string;
 }
 
+export interface TelegramUser {
+  id?: number;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+}
+
+export interface Order {
+  id: string;
+  items: CartItem[];
+  total: number;
+  shippingAddress: ShippingAddress;
+  telegramUser?: TelegramUser;
+  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  createdAt: string;
+}
+
 interface CartState {
   items: CartItem[];
   shippingAddress: ShippingAddress | null;
+  telegramUser: TelegramUser | null;
   promoCode: string | null;
   total: number;
+  orders: Order[];
+  favorites: string[]; // product IDs
   
   // Actions
   addItem: (product: Product, quantity?: number) => void;
@@ -35,9 +56,19 @@ interface CartState {
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   setShippingAddress: (address: ShippingAddress) => void;
+  setTelegramUser: (user: TelegramUser) => void;
   applyPromoCode: (code: string) => void;
   calculateTotal: () => number;
   getItemCount: () => number;
+  
+  // Order actions
+  addOrder: (order: Order) => void;
+  getOrders: () => Order[];
+  
+  // Favorites
+  addToFavorites: (productId: string) => void;
+  removeFromFavorites: (productId: string) => void;
+  isFavorite: (productId: string) => boolean;
 }
 
 export const useCartStore = create<CartState>()(
@@ -45,8 +76,11 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       shippingAddress: null,
+      telegramUser: null,
       promoCode: null,
       total: 0,
+      orders: [],
+      favorites: [],
 
       addItem: (product, quantity = 1) => {
         set((state) => {
@@ -67,7 +101,6 @@ export const useCartStore = create<CartState>()(
           };
         });
         
-        // Recalculate total
         get().calculateTotal();
       },
 
@@ -76,7 +109,6 @@ export const useCartStore = create<CartState>()(
           items: state.items.filter((item) => item.id !== productId),
         }));
         
-        // Recalculate total
         get().calculateTotal();
       },
 
@@ -92,7 +124,6 @@ export const useCartStore = create<CartState>()(
           ),
         }));
         
-        // Recalculate total
         get().calculateTotal();
       },
 
@@ -104,9 +135,12 @@ export const useCartStore = create<CartState>()(
         set({ shippingAddress: address });
       },
 
+      setTelegramUser: (user: TelegramUser) => {
+        set({ telegramUser: user });
+      },
+
       applyPromoCode: (code: string) => {
         set({ promoCode: code });
-        // Promo code logic can be extended with API validation
         get().calculateTotal();
       },
 
@@ -117,9 +151,7 @@ export const useCartStore = create<CartState>()(
           0
         );
         
-        // Apply promo code discount if valid (extend with API validation)
-        const discount = state.promoCode ? subtotal * 0.1 : 0; // 10% discount example
-        
+        const discount = state.promoCode ? subtotal * 0.1 : 0;
         const total = subtotal - discount;
         
         set({ total: Math.round(total * 100) / 100 });
@@ -130,6 +162,37 @@ export const useCartStore = create<CartState>()(
       getItemCount: () => {
         return get().items.reduce((sum, item) => sum + item.quantity, 0);
       },
+
+      // Order actions
+      addOrder: (order: Order) => {
+        set((state) => ({
+          orders: [order, ...state.orders],
+          items: [],
+          total: 0,
+          promoCode: null,
+        }));
+      },
+
+      getOrders: () => {
+        return get().orders;
+      },
+
+      // Favorites
+      addToFavorites: (productId: string) => {
+        set((state) => ({
+          favorites: [...state.favorites, productId],
+        }));
+      },
+
+      removeFromFavorites: (productId: string) => {
+        set((state) => ({
+          favorites: state.favorites.filter((id) => id !== productId),
+        }));
+      },
+
+      isFavorite: (productId: string) => {
+        return get().favorites.includes(productId);
+      },
     }),
     {
       name: 'cart-storage',
@@ -137,6 +200,9 @@ export const useCartStore = create<CartState>()(
         items: state.items,
         promoCode: state.promoCode,
         shippingAddress: state.shippingAddress,
+        telegramUser: state.telegramUser,
+        orders: state.orders,
+        favorites: state.favorites,
       }),
     }
   )
