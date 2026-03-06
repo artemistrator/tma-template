@@ -1,0 +1,158 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tma-template/schema/mini-app.json",
+  "title": "Mini App Schema",
+  "description": "Configuration schema for Telegram Mini App",
+  "type": "object",
+  "required": ["meta", "pages"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["title"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Application title"
+        },
+        "logo": {
+          "type": "string",
+          "description": "Path to logo image"
+        },
+        "locale": {
+          "type": "string",
+          "default": "en",
+          "description": "Application locale"
+        },
+        "currency": {
+          "type": "string",
+          "default": "USD",
+          "description": "Default currency"
+        },
+        "theme": {
+          "type": "object",
+          "properties": {
+            "primaryColor": { "type": "string" },
+            "secondaryColor": { "type": "string" }
+          }
+        }
+      }
+    },
+    "dataModel": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name", "fields"],
+        "properties": {
+          "name": { "type": "string" },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["type"],
+              "properties": {
+                "type": { "type": "string", "enum": ["string", "number", "boolean", "array", "object"] },
+                "required": { "type": "boolean" },
+                "description": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "pages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "route", "components"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "route": { "type": "string" },
+          "components": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["type"],
+              "properties": {
+                "id": { "type": "string" },
+                "type": { "type": "string" },
+                "props": { "type": "object" },
+                "binding": {
+                  "type": "object",
+                  "properties": {
+                    "source": { "type": "string" },
+                    "transform": { "type": "string" },
+                    "filter": { "type": "string" }
+                  }
+                },
+                "children": {
+                  "type": "array",
+                  "items": { "$ref": "#/properties/pages/items/properties/components/items" }
+                },
+                "events": { "type": "object" }
+              }
+            }
+          },
+          "mainButton": {
+            "type": "object",
+            "properties": {
+              "visible": { "type": "boolean" },
+              "text": { "type": "string" },
+              "color": { "type": "string" },
+              "action": { "type": "string" }
+            }
+          },
+          "backButton": {
+            "type": "object",
+            "properties": {
+              "visible": { "type": "boolean" },
+              "action": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "flows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "steps"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "steps": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "type"],
+              "properties": {
+                "id": { "type": "string" },
+                "type": { "type": "string", "enum": ["navigate", "addToCart", "removeFromCart", "startPayment", "showModal", "apiCall"] },
+                "target": { "type": "string" },
+                "params": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "apiEndpoints": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["url", "method"],
+        "properties": {
+          "url": { "type": "string" },
+          "method": { "type": "string", "enum": ["GET", "POST", "PUT", "DELETE"] },
+          "headers": { "type": "object" }
+        }
+      }
+    }
+  }
+}

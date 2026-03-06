@@ -1,0 +1,260 @@
+{
+  "$schema": "./mini-app-schema.json",
+  "meta": {
+    "title": "TechStore",
+    "logo": "/logo.png",
+    "locale": "en",
+    "currency": "USD",
+    "theme": {
+      "primaryColor": "#007AFF",
+      "secondaryColor": "#5856D6"
+    }
+  },
+  "dataModel": {
+    "Product": {
+      "name": "Product",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "name": { "type": "string", "required": true },
+        "price": { "type": "number", "required": true },
+        "image": { "type": "string", "required": false },
+        "description": { "type": "string", "required": false },
+        "category": { "type": "string", "required": false }
+      }
+    },
+    "Promo": {
+      "name": "Promo",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "title": { "type": "string", "required": true },
+        "description": { "type": "string", "required": false },
+        "image": { "type": "string", "required": false },
+        "backgroundColor": { "type": "string", "required": false }
+      }
+    },
+    "Cart": {
+      "name": "Cart",
+      "fields": {
+        "items": { "type": "array", "required": true },
+        "total": { "type": "number", "required": true }
+      }
+    }
+  },
+  "pages": [
+    {
+      "id": "home",
+      "title": "TechStore",
+      "route": "/",
+      "components": [
+        {
+          "id": "promo-slider-1",
+          "type": "PromoSlider",
+          "props": {
+            "autoPlay": true,
+            "autoPlayInterval": 5000,
+            "height": "md"
+          },
+          "binding": {
+            "source": "promos"
+          }
+        },
+        {
+          "id": "product-list-featured",
+          "type": "ProductList",
+          "props": {
+            "title": "Featured Products",
+            "description": "Our best sellers",
+            "columns": 2,
+            "limit": 6
+          },
+          "binding": {
+            "source": "products"
+          }
+        },
+        {
+          "id": "product-list-new",
+          "type": "ProductList",
+          "props": {
+            "title": "New Arrivals",
+            "description": "Check out the latest tech",
+            "columns": 2,
+            "limit": 4
+          },
+          "binding": {
+            "source": "newProducts"
+          }
+        }
+      ],
+      "mainButton": {
+        "visible": false
+      }
+    },
+    {
+      "id": "catalog",
+      "title": "Catalog",
+      "route": "/catalog",
+      "components": [
+        {
+          "id": "product-list-catalog",
+          "type": "ProductList",
+          "props": {
+            "title": "All Products",
+            "columns": 2
+          },
+          "binding": {
+            "source": "products"
+          }
+        }
+      ],
+      "backButton": {
+        "visible": true,
+        "action": "home"
+      }
+    },
+    {
+      "id": "cart",
+      "title": "Shopping Cart",
+      "route": "/cart",
+      "components": [
+        {
+          "id": "cart-items",
+          "type": "Cart",
+          "props": {
+            "showEmpty": true,
+            "emptyMessage": "Your cart is empty"
+          },
+          "binding": {
+            "source": "cart"
+          }
+        },
+        {
+          "id": "cart-summary",
+          "type": "CartSummary",
+          "props": {
+            "showSubtotal": true,
+            "showDiscount": true,
+            "showTotal": true,
+            "promoCodeEnabled": true
+          },
+          "events": {
+            "onCheckout": "navigate:checkout"
+          }
+        }
+      ],
+      "mainButton": {
+        "visible": true,
+        "text": "Proceed to Checkout",
+        "action": "navigate:checkout"
+      },
+      "backButton": {
+        "visible": true,
+        "action": "home"
+      }
+    },
+    {
+      "id": "checkout",
+      "title": "Checkout",
+      "route": "/checkout",
+      "components": [
+        {
+          "id": "checkout-form",
+          "type": "CheckoutForm",
+          "props": {}
+        },
+        {
+          "id": "cart-summary-checkout",
+          "type": "CartSummary",
+          "props": {
+            "showSubtotal": true,
+            "showDiscount": true,
+            "showTotal": true,
+            "promoCodeEnabled": false
+          }
+        },
+        {
+          "id": "payment-button",
+          "type": "PaymentButton",
+          "props": {
+            "text": "Pay Now",
+            "variant": "telegram"
+          },
+          "events": {
+            "onPaymentSuccess": "navigate:order-confirmation"
+          }
+        }
+      ],
+      "backButton": {
+        "visible": true,
+        "action": "cart"
+      }
+    },
+    {
+      "id": "order-confirmation",
+      "title": "Order Confirmed",
+      "route": "/order-confirmation",
+      "components": [
+        {
+          "id": "payment-status",
+          "type": "PaymentStatus",
+          "props": {
+            "success": true,
+            "onContinue": "navigate:home"
+          }
+        }
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "id": "shopping-flow",
+      "name": "Shopping Flow",
+      "description": "Main user journey from browsing to purchase",
+      "steps": ["home", "catalog", "cart", "checkout", "order-confirmation"],
+      "actions": [
+        {
+          "id": "add-to-cart",
+          "type": "addToCart",
+          "params": {
+            "quantity": 1
+          }
+        },
+        {
+          "id": "navigate-to-cart",
+          "type": "navigate",
+          "target": "cart"
+        },
+        {
+          "id": "navigate-to-checkout",
+          "type": "navigate",
+          "target": "checkout"
+        },
+        {
+          "id": "start-payment",
+          "type": "startPayment"
+        },
+        {
+          "id": "complete-order",
+          "type": "apiCall",
+          "target": "/api/orders",
+          "params": {
+            "method": "POST"
+          }
+        }
+      ]
+    }
+  ],
+  "apiEndpoints": {
+    "products": {
+      "url": "/api/products",
+      "method": "GET"
+    },
+    "promos": {
+      "url": "/api/promos",
+      "method": "GET"
+    },
+    "categories": {
+      "url": "/api/categories",
+      "method": "GET"
+    }
+  }
+}
