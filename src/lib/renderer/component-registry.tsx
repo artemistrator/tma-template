@@ -97,7 +97,7 @@ export function DynamicComponent({ type, props = {}, binding, children, id, clas
  * Render a list of components from schema
  */
 export function renderComponents(components: ComponentInstance[] | undefined, dataContext?: Record<string, unknown>) {
-  if (!components || components.length === 0) {
+  if (!components || !Array.isArray(components) || components.length === 0) {
     return null;
   }
 
@@ -123,7 +123,7 @@ export function renderComponents(components: ComponentInstance[] | undefined, da
         binding={component.binding}
         id={component.id}
       >
-        {component.children ? renderComponents(component.children, dataContext) : undefined}
+        {component.children && Array.isArray(component.children) ? renderComponents(component.children, dataContext) : null}
       </DynamicComponent>
     );
   });
