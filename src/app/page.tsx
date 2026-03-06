@@ -5,14 +5,12 @@ import { PageRenderer } from '@/lib/renderer/page-renderer';
 import { MiniAppSchemaType, validateMiniAppSchema } from '@/lib/schema/mini-app-schema';
 import { initializeComponents } from '@/components';
 import demoConfig from '@/config/demo.json';
-import { mockProducts, mockPromos } from '@/config/seed-data';
 
 // Force dynamic rendering to avoid SSR issues with window object
 export const dynamic = 'force-dynamic';
 
 export default function Home() {
   const [schema, setSchema] = useState<MiniAppSchemaType | null>(null);
-  const [dataContext, setDataContext] = useState<Record<string, unknown>>({});
   const [currentPageId, setCurrentPageId] = useState('home');
   const [isMounted, setIsMounted] = useState(false);
 
@@ -32,15 +30,6 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(() => {
-    // Load initial data
-    setDataContext({
-      products: mockProducts,
-      promos: mockPromos,
-      newProducts: mockProducts.slice(0, 4),
-    });
-  }, []);
-
   const handleNavigate = (pageId: string) => {
     setCurrentPageId(pageId);
   };
@@ -58,7 +47,7 @@ export default function Home() {
   return (
     <PageRenderer
       page={currentPage}
-      dataContext={dataContext}
+      dataContext={{}}
       onNavigate={handleNavigate}
     />
   );
