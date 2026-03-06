@@ -86,7 +86,7 @@ export function useTelegramUser() {
 
   return {
     telegramUser,
-    isRequestingContact,
+    isRequestingContact: false,
     requestPhoneContact: requestPhoneContactNative,
     getFullName,
     hasPhone: !!telegramUser?.phone,
