@@ -18,7 +18,7 @@ interface PromoSlide {
 
 interface PromoSliderProps {
   id?: string;
-  slides: PromoSlide[];
+  slides?: PromoSlide[];
   autoPlay?: boolean;
   autoPlayInterval?: number;
   height?: 'sm' | 'md' | 'lg' | number;
@@ -31,7 +31,7 @@ interface PromoSliderProps {
  */
 export function PromoSlider({
   id,
-  slides,
+  slides = [],
   autoPlay = true,
   autoPlayInterval = 5000,
   height = 'md',
@@ -45,27 +45,27 @@ export function PromoSlider({
   const { hapticFeedback } = useTelegramContext();
 
   const heightValue = typeof height === 'number' ? height : { sm: 120, md: 180, lg: 240 }[height];
+  const safeSlides = Array.isArray(slides) ? slides : [];
 
   const goToSlide = useCallback((index: number) => {
+    if (safeSlides.length === 0) return;
     setCurrentIndex((prev) => {
-      const newIndex = Math.max(0, Math.min(index, slides.length - 1));
+      const newIndex = Math.max(0, Math.min(index, safeSlides.length - 1));
       if (newIndex !== prev) {
         hapticFeedback.selection();
       }
       return newIndex;
     });
-  }, [slides.length, hapticFeedback]);
+  }, [safeSlides.length, hapticFeedback]);
 
   // Auto-play
   useEffect(() => {
-    if (!autoPlay || slides.length <= 1) return;
-
+    if (!autoPlay || safeSlides.length <= 1) return;
     const interval = setInterval(() => {
       goToSlide(currentIndex + 1);
     }, autoPlayInterval);
-
     return () => clearInterval(interval);
-  }, [autoPlay, autoPlayInterval, currentIndex, goToSlide, slides.length]);
+  }, [autoPlay, autoPlayInterval, currentIndex, goToSlide, safeSlides.length]);
 
   // Touch handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -81,19 +81,13 @@ export function PromoSlider({
 
   const handleTouchEnd = () => {
     setIsDragging(false);
-    
     if (Math.abs(translateX) > 50) {
-      if (translateX > 0) {
-        goToSlide(currentIndex - 1);
-      } else {
-        goToSlide(currentIndex + 1);
-      }
+      goToSlide(translateX > 0 ? currentIndex - 1 : currentIndex + 1);
     }
-    
     setTranslateX(0);
   };
 
-  // Mouse handlers for desktop testing
+  // Mouse handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
     setStartX(e.clientX);
@@ -101,25 +95,18 @@ export function PromoSlider({
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
-    const currentX = e.clientX;
-    setTranslateX(currentX - startX);
+    setTranslateX(e.clientX - startX);
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
-    
     if (Math.abs(translateX) > 50) {
-      if (translateX > 0) {
-        goToSlide(currentIndex - 1);
-      } else {
-        goToSlide(currentIndex + 1);
-      }
+      goToSlide(translateX > 0 ? currentIndex - 1 : currentIndex + 1);
     }
-    
     setTranslateX(0);
   };
 
-  if (slides.length === 0) return null;
+  if (safeSlides.length === 0) return null;
 
   return (
     <div className={cn("relative", className)} id={id}>
@@ -141,11 +128,8 @@ export function PromoSlider({
             transform: `translateX(calc(-${currentIndex * 100}% + ${translateX}px))`,
           }}
         >
-          {slides.map((slide) => (
-            <div
-              key={slide.id}
-              className="min-w-full h-full"
-            >
+          {safeSlides.map((slide) => (
+            <div key={slide.id} className="min-w-full h-full">
               <Card className="h-full border-0 rounded-lg overflow-hidden">
                 <CardContent className="p-0 h-full">
                   {slide.image ? (
@@ -195,9 +179,9 @@ export function PromoSlider({
       </div>
 
       {/* Pagination dots */}
-      {slides.length > 1 && (
+      {safeSlides.length > 1 && (
         <div className="flex justify-center gap-2 mt-3">
-          {slides.map((_, index) => (
+          {safeSlides.map((_, index) => (
             <button
               key={index}
               onClick={() => goToSlide(index)}
