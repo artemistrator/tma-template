@@ -19,6 +19,12 @@ interface PromoSlide {
 interface PromoSliderProps {
   id?: string;
   slides?: PromoSlide[];
+  props?: {
+    slides?: PromoSlide[];
+    autoPlay?: boolean;
+    autoPlayInterval?: number;
+    height?: 'sm' | 'md' | 'lg' | number;
+  };
   autoPlay?: boolean;
   autoPlayInterval?: number;
   height?: 'sm' | 'md' | 'lg' | number;
@@ -31,7 +37,8 @@ interface PromoSliderProps {
  */
 export function PromoSlider({
   id,
-  slides = [],
+  slides: directSlides,
+  props,
   autoPlay = true,
   autoPlayInterval = 5000,
   height = 'md',
@@ -44,7 +51,13 @@ export function PromoSlider({
   const containerRef = useRef<HTMLDivElement>(null);
   const { hapticFeedback } = useTelegramContext();
 
-  const heightValue = typeof height === 'number' ? height : { sm: 120, md: 180, lg: 240 }[height];
+  // Use slides from props.slides or direct slides
+  const slides = props?.slides || directSlides || [];
+  const pageAutoPlay = props?.autoPlay ?? autoPlay;
+  const pageAutoPlayInterval = props?.autoPlayInterval ?? autoPlayInterval;
+  const pageHeight = (props?.height as 'sm' | 'md' | 'lg' | number) || height;
+
+  const heightValue = typeof pageHeight === 'number' ? pageHeight : { sm: 120, md: 180, lg: 240 }[pageHeight];
   const safeSlides = Array.isArray(slides) ? slides : [];
 
   const goToSlide = useCallback((index: number) => {
@@ -60,12 +73,12 @@ export function PromoSlider({
 
   // Auto-play
   useEffect(() => {
-    if (!autoPlay || safeSlides.length <= 1) return;
+    if (!pageAutoPlay || safeSlides.length <= 1) return;
     const interval = setInterval(() => {
       goToSlide(currentIndex + 1);
-    }, autoPlayInterval);
+    }, pageAutoPlayInterval);
     return () => clearInterval(interval);
-  }, [autoPlay, autoPlayInterval, currentIndex, goToSlide, safeSlides.length]);
+  }, [pageAutoPlay, pageAutoPlayInterval, currentIndex, goToSlide, safeSlides.length]);
 
   // Touch handlers
   const handleTouchStart = (e: React.TouchEvent) => {

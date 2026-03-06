@@ -19,6 +19,13 @@ interface ProductListProps {
   title?: string;
   description?: string;
   data?: Product[];
+  props?: {
+    data?: Product[];
+    title?: string;
+    description?: string;
+    limit?: number;
+    columns?: 1 | 2 | 3;
+  };
   limit?: number;
   columns?: 1 | 2 | 3;
   loading?: boolean;
@@ -36,7 +43,8 @@ export function ProductList({
   id,
   title,
   description,
-  data = [],
+  data: directData,
+  props,
   limit,
   columns = 2,
   loading = false,
@@ -45,7 +53,14 @@ export function ProductList({
   className,
   emptyMessage = "No products found",
 }: ProductListProps) {
-  const limitedData = limit ? data.slice(0, limit) : data;
+  // Use data from props.data or direct data
+  const data = props?.data || directData || [];
+  const pageLimit = props?.limit || limit;
+  const pageColumns = (props?.columns as 1 | 2 | 3) || columns;
+  const pageTitle = props?.title || title;
+  const pageDescription = props?.description || description;
+  
+  const limitedData = pageLimit ? data.slice(0, pageLimit) : data;
 
   const gridCols = {
     1: "grid-cols-1",
@@ -56,14 +71,14 @@ export function ProductList({
   if (loading) {
     return (
       <div className={cn("space-y-4", className)}>
-        {title && (
+        {pageTitle && (
           <div>
             <Skeleton className="h-8 w-48 mb-2" />
             <Skeleton className="h-4 w-64" />
           </div>
         )}
-        <div className={cn("grid gap-4", gridCols[columns])}>
-          {Array.from({ length: limit || 6 }).map((_, i) => (
+        <div className={cn("grid gap-4", gridCols[pageColumns])}>
+          {Array.from({ length: pageLimit || 6 }).map((_, i) => (
             <Skeleton key={i} className="aspect-[3/4] rounded-lg" />
           ))}
         </div>
@@ -81,14 +96,14 @@ export function ProductList({
 
   return (
     <div className={cn("space-y-4", className)} id={id}>
-      {(title || description) && (
+      {(pageTitle || pageDescription) && (
         <div>
-          {title && <h2 className="text-xl font-bold">{title}</h2>}
-          {description && <p className="text-muted-foreground">{description}</p>}
+          {pageTitle && <h2 className="text-xl font-bold">{pageTitle}</h2>}
+          {pageDescription && <p className="text-muted-foreground">{pageDescription}</p>}
         </div>
       )}
-      
-      <div className={cn("grid gap-4", gridCols[columns])}>
+
+      <div className={cn("grid gap-4", gridCols[pageColumns])}>
         {limitedData.map((product) => (
           <ProductCard
             key={product.id}
