@@ -2,9 +2,11 @@ import React from 'react';
 import { ComponentInstance } from '@/lib/schema/mini-app-schema';
 
 // Component type mapping
-export type ComponentType = 
+export type ComponentType =
   | 'Screen'
   | 'Header'
+  | 'BottomNav'
+  | 'Modal'
   | 'ProductCard'
   | 'ProductList'
   | 'PromoSlider'

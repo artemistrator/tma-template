@@ -17,6 +17,9 @@ export async function POST(request: NextRequest) {
     // TODO: Validate items against database
     // TODO: Calculate final price server-side
     // TODO: Apply promo code discount if valid
+    
+    // Log for debugging (remove in production)
+    console.log('Creating invoice:', { itemsCount: items?.length, total, hasAddress: !!shippingAddress, promoCode });
 
     // Mock invoice creation
     const invoiceId = `inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
