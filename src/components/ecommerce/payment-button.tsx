@@ -20,7 +20,9 @@ interface PaymentButtonProps {
   props?: {
     text?: string;
     variant?: 'default' | 'telegram' | 'outline';
+    onPaymentSuccess?: string;
   };
+  onNavigate?: (pageId: string) => void;
 }
 
 /**
@@ -29,7 +31,7 @@ interface PaymentButtonProps {
  */
 export function PaymentButton({
   id,
-  text = 'Pay',
+  text: directText = 'Pay',
   amount,
   currency = 'USD',
   onPaymentSuccess,
@@ -37,15 +39,21 @@ export function PaymentButton({
   disabled = false,
   className,
   variant = 'telegram',
+  props,
+  onNavigate,
 }: PaymentButtonProps) {
   const [isProcessing, setIsProcessing] = React.useState(false);
   const total = useCartStore((state) => state.total);
   const shippingAddress = useCartStore((state) => state.shippingAddress);
   const items = useCartStore((state) => state.items);
   const clearCart = useCartStore((state) => state.clearCart);
+  const addOrder = useCartStore((state) => state.addOrder);
   const { isTelegram, showAlert, hapticFeedback } = useTelegramContext();
 
-  const paymentAmount = amount || total;
+  // Support both direct props and nested props from schema
+  const text = props?.text ?? directText;
+  const paymentAmount = amount ?? total;
+  const successCallback = props?.onPaymentSuccess ?? onPaymentSuccess;
 
   const handlePayment = async () => {
     if (!shippingAddress) {
@@ -83,32 +91,33 @@ export function PaymentButton({
     return new Promise<void>((resolve) => {
       /**
        * TODO: Integrate Telegram Payment API
-       * 
-       * Backend integration example:
-       * 1. Create invoice on backend:
-       *    const response = await fetch('/api/create-invoice', {
-       *      method: 'POST',
-       *      body: JSON.stringify({ items, total, shippingAddress })
-       *    });
-       *    const { invoiceUrl } = await response.json();
-       * 
-       * 2. Open Telegram invoice:
-       *    window.Telegram?.WebApp?.openInvoice(invoiceUrl, (status) => {
-       *      if (status === 'paid') {
-       *        hapticFeedback.success();
-       *        clearCart();
-       *        onPaymentSuccess?.(paymentId);
-       *      }
-       *    });
        */
-      
+
       // Mock payment flow for demo
       setTimeout(() => {
-        const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
+        const orderId = `ORD-${Date.now().toString().slice(-6)}`;
+
+        // Create order in store
+        addOrder({
+          id: orderId,
+          items: [...items],
+          total: paymentAmount,
+          shippingAddress: shippingAddress!,
+          status: 'confirmed',
+          createdAt: new Date().toISOString(),
+        });
+
         hapticFeedback.success();
         clearCart();
-        onPaymentSuccess?.(paymentId);
+        
+        // Handle navigation string like "navigate:order-success"
+        if (typeof successCallback === 'string' && successCallback.startsWith('navigate:')) {
+          const targetPage = successCallback.split(':')[1];
+          onNavigate?.(targetPage);
+        } else if (typeof successCallback === 'function') {
+          successCallback(orderId);
+        }
+        
         resolve();
       }, 1500);
     });
@@ -117,26 +126,33 @@ export function PaymentButton({
   const handleWebPayment = async () => {
     /**
      * TODO: Integrate payment gateway (Stripe, PayPal, etc.)
-     * 
-     * Example integration:
-     * 1. Create payment intent on backend
-     * 2. Use Stripe.js or PayPal SDK to process payment
-     * 3. Handle success/error callbacks
-     * 
-     * Stripe example:
-     *    const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY);
-     *    const { error } = await stripe.confirmCardPayment(clientSecret, {
-     *      payment_method: { card: elements.getElement(CardElement) }
-     *    });
      */
-    
+
     return new Promise<void>((resolve) => {
       setTimeout(() => {
-        const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
+        const orderId = `ORD-${Date.now().toString().slice(-6)}`;
+
+        // Create order in store
+        addOrder({
+          id: orderId,
+          items: [...items],
+          total: paymentAmount,
+          shippingAddress: shippingAddress!,
+          status: 'confirmed',
+          createdAt: new Date().toISOString(),
+        });
+
         hapticFeedback.success();
         clearCart();
-        onPaymentSuccess?.(paymentId);
+        
+        // Handle navigation string like "navigate:order-success"
+        if (typeof successCallback === 'string' && successCallback.startsWith('navigate:')) {
+          const targetPage = successCallback.split(':')[1];
+          onNavigate?.(targetPage);
+        } else if (typeof successCallback === 'function') {
+          successCallback(orderId);
+        }
+        
         resolve();
       }, 1500);
     });

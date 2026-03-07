@@ -38,6 +38,16 @@
         "items": { "type": "array", "required": true },
         "total": { "type": "number", "required": true }
       }
+    },
+    "Order": {
+      "name": "Order",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "items": { "type": "array", "required": true },
+        "total": { "type": "number", "required": true },
+        "status": { "type": "string", "required": true },
+        "createdAt": { "type": "string", "required": true }
+      }
     }
   },
   "pages": [
@@ -76,6 +86,13 @@
                 "backgroundColor": "#45B7D1"
               }
             ]
+          }
+        },
+        {
+          "id": "search-bar-1",
+          "type": "SearchBar",
+          "props": {
+            "placeholder": "Search products..."
           }
         },
         {
@@ -195,11 +212,32 @@
       "route": "/catalog",
       "components": [
         {
+          "id": "search-bar-catalog",
+          "type": "SearchBar",
+          "props": {
+            "placeholder": "Search catalog..."
+          }
+        },
+        {
+          "id": "filter-panel-1",
+          "type": "FilterPanel",
+          "props": {
+            "categories": [
+              { "id": "audio", "label": "Audio", "count": 2 },
+              { "id": "wearables", "label": "Wearables", "count": 1 },
+              { "id": "accessories", "label": "Accessories", "count": 4 },
+              { "id": "peripherals", "label": "Peripherals", "count": 3 }
+            ],
+            "priceRange": { "min": 0, "max": 500 }
+          }
+        },
+        {
           "id": "product-list-catalog",
           "type": "ProductList",
           "props": {
             "title": "All Products",
             "columns": 2,
+            "enableFiltering": true,
             "data": [
               {
                 "id": "1",
@@ -264,15 +302,27 @@
                 "image": "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=400",
                 "description": "Adjustable aluminum laptop stand",
                 "category": "Accessories"
+              },
+              {
+                "id": "9",
+                "name": "Webcam 4K Pro",
+                "price": 199.99,
+                "image": "https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=400",
+                "description": "4K webcam with auto-focus and noise cancellation",
+                "category": "Peripherals"
+              },
+              {
+                "id": "10",
+                "name": "Phone Stand",
+                "price": 19.99,
+                "image": "https://images.unsplash.com/photo-1586953229609-7e0c50d40074?w=400",
+                "description": "Adjustable phone stand for desk",
+                "category": "Accessories"
               }
             ]
           }
         }
-      ],
-      "backButton": {
-        "visible": true,
-        "action": "home"
-      }
+      ]
     },
     {
       "id": "cart",
@@ -294,19 +344,11 @@
             "showSubtotal": true,
             "showDiscount": true,
             "showTotal": true,
-            "promoCodeEnabled": true
+            "promoCodeEnabled": true,
+            "onCheckout": "navigate:checkout"
           }
         }
-      ],
-      "mainButton": {
-        "visible": true,
-        "text": "Proceed to Checkout",
-        "action": "navigate:checkout"
-      },
-      "backButton": {
-        "visible": true,
-        "action": "home"
-      }
+      ]
     },
     {
       "id": "checkout",
@@ -333,26 +375,175 @@
           "type": "PaymentButton",
           "props": {
             "text": "Pay Now",
-            "variant": "telegram"
+            "variant": "telegram",
+            "onPaymentSuccess": "navigate:order-success"
           }
         }
-      ],
-      "backButton": {
-        "visible": true,
-        "action": "cart"
-      }
+      ]
     },
     {
-      "id": "order-confirmation",
+      "id": "order-success",
       "title": "Order Confirmed",
-      "route": "/order-confirmation",
+      "route": "/order-success",
       "components": [
         {
-          "id": "payment-status",
-          "type": "PaymentStatus",
+          "id": "order-success-1",
+          "type": "OrderSuccess",
           "props": {
-            "success": true,
-            "onContinue": "navigate:home"
+            "orderId": "ORD-123456",
+            "total": 299.99
+          }
+        }
+      ]
+    },
+    {
+      "id": "order-failed",
+      "title": "Order Failed",
+      "route": "/order-failed",
+      "components": [
+        {
+          "id": "order-failed-1",
+          "type": "OrderFailed",
+          "props": {
+            "error": "Payment was declined. Please try a different payment method.",
+            "onRetry": "navigate:checkout",
+            "onBack": "navigate:cart"
+          }
+        }
+      ]
+    },
+    {
+      "id": "orders",
+      "title": "My Orders",
+      "route": "/orders",
+      "components": [
+        {
+          "id": "orders-list",
+          "type": "OrdersList",
+          "props": {
+            "title": "Recent Orders",
+            "description": "Track and manage your orders",
+            "orders": [
+              {
+                "id": "ORD-001234",
+                "status": "delivered",
+                "total": 549.98,
+                "createdAt": "2025-02-15T10:30:00Z",
+                "items": [
+                  {
+                    "id": "1",
+                    "name": "Wireless Earbuds Pro",
+                    "price": 149.99,
+                    "image": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=400",
+                    "quantity": 1
+                  },
+                  {
+                    "id": "2",
+                    "name": "Smart Watch Series 5",
+                    "price": 399.99,
+                    "image": "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=400",
+                    "quantity": 1
+                  }
+                ]
+              },
+              {
+                "id": "ORD-001235",
+                "status": "shipped",
+                "total": 129.99,
+                "createdAt": "2025-02-20T14:15:00Z",
+                "trackingNumber": "1Z999AA10123456784",
+                "items": [
+                  {
+                    "id": "6",
+                    "name": "Mechanical Keyboard",
+                    "price": 129.99,
+                    "image": "https://images.unsplash.com/photo-1595225476474-87563907a212?w=400",
+                    "quantity": 1
+                  }
+                ]
+              },
+              {
+                "id": "ORD-001236",
+                "status": "processing",
+                "total": 219.97,
+                "createdAt": "2025-02-28T09:45:00Z",
+                "items": [
+                  {
+                    "id": "4",
+                    "name": "Bluetooth Speaker",
+                    "price": 79.99,
+                    "image": "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=400",
+                    "quantity": 1
+                  },
+                  {
+                    "id": "5",
+                    "name": "USB-C Hub Multiport",
+                    "price": 59.99,
+                    "image": "https://images.unsplash.com/photo-1625841442290-98c949728613?w=400",
+                    "quantity": 1
+                  },
+                  {
+                    "id": "7",
+                    "name": "Wireless Mouse",
+                    "price": 69.99,
+                    "image": "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400",
+                    "quantity": 1
+                  }
+                ]
+              },
+              {
+                "id": "ORD-001237",
+                "status": "pending",
+                "total": 199.99,
+                "createdAt": "2025-03-01T16:20:00Z",
+                "items": [
+                  {
+                    "id": "9",
+                    "name": "Webcam 4K Pro",
+                    "price": 199.99,
+                    "image": "https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=400",
+                    "quantity": 1
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "favorites",
+      "title": "Favorites",
+      "route": "/favorites",
+      "components": [
+        {
+          "id": "favorites-list",
+          "type": "ProductList",
+          "props": {
+            "title": "My Favorites",
+            "columns": 2,
+            "emptyMessage": "No favorites yet",
+            "enableFiltering": false,
+            "data": [
+              {
+                "id": "1",
+                "name": "Wireless Earbuds Pro",
+                "price": 149.99,
+                "image": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=400",
+                "description": "Premium wireless earbuds with active noise cancellation",
+                "category": "Audio",
+                "badge": "Favorite"
+              },
+              {
+                "id": "2",
+                "name": "Smart Watch Series 5",
+                "price": 399.99,
+                "image": "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=400",
+                "description": "Advanced smartwatch with health monitoring",
+                "category": "Wearables",
+                "badge": "Favorite"
+              }
+            ]
           }
         }
       ]
@@ -363,7 +554,7 @@
       "id": "shopping-flow",
       "name": "Shopping Flow",
       "description": "Main user journey from browsing to purchase",
-      "steps": ["home", "catalog", "cart", "checkout", "order-confirmation"],
+      "steps": ["home", "catalog", "cart", "checkout", "order-success"],
       "actions": [
         {
           "id": "add-to-cart",
@@ -385,6 +576,39 @@
         {
           "id": "start-payment",
           "type": "startPayment"
+        },
+        {
+          "id": "complete-payment",
+          "type": "navigate",
+          "target": "order-success"
+        }
+      ]
+    },
+    {
+      "id": "favorites-flow",
+      "name": "Favorites Flow",
+      "description": "Browse and manage favorites",
+      "steps": ["home", "favorites", "cart"],
+      "actions": [
+        {
+          "id": "add-to-favorites",
+          "type": "apiCall",
+          "target": "/api/favorites",
+          "params": {
+            "method": "POST"
+          }
+        },
+        {
+          "id": "remove-from-favorites",
+          "type": "apiCall",
+          "target": "/api/favorites",
+          "params": {
+            "method": "DELETE"
+          }
+        },
+        {
+          "id": "add-favorite-to-cart",
+          "type": "addToCart"
         }
       ]
     }

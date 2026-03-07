@@ -16,6 +16,7 @@ export type ComponentType =
   | 'PaymentButton'
   | 'OrderSuccess'
   | 'OrderFailed'
+  | 'OrdersList'
   | 'SearchBar'
   | 'FilterPanel'
   | 'Button'
@@ -34,6 +35,7 @@ export interface ComponentFactoryProps {
   children?: React.ReactNode;
   id?: string;
   className?: string;
+  onNavigate?: (pageId: string) => void;
 }
 
 // Registry map - will be populated as components are created
@@ -73,7 +75,7 @@ export function getRegisteredComponents(): ComponentType[] {
 /**
  * Dynamic component renderer
  */
-export function DynamicComponent({ type, props = {}, binding, children, id, className }: ComponentFactoryProps) {
+export function DynamicComponent({ type, props = {}, binding, children, id, className, onNavigate }: ComponentFactoryProps) {
   const Component = componentRegistry.get(type as ComponentType);
 
   if (!Component) {
@@ -92,6 +94,7 @@ export function DynamicComponent({ type, props = {}, binding, children, id, clas
       props={props}
       binding={binding}
       className={className}
+      onNavigate={onNavigate}
     >
       {children}
     </Component>
@@ -101,7 +104,7 @@ export function DynamicComponent({ type, props = {}, binding, children, id, clas
 /**
  * Render a list of components from schema
  */
-export function renderComponents(components: ComponentInstance[] | undefined, dataContext?: Record<string, unknown>) {
+export function renderComponents(components: ComponentInstance[] | undefined, dataContext?: Record<string, unknown>, onNavigate?: (pageId: string) => void) {
   if (!components || !Array.isArray(components) || components.length === 0) {
     return null;
   }
@@ -127,8 +130,9 @@ export function renderComponents(components: ComponentInstance[] | undefined, da
         props={resolvedProps}
         binding={component.binding}
         id={component.id}
+        onNavigate={onNavigate}
       >
-        {component.children && Array.isArray(component.children) ? renderComponents(component.children, dataContext) : null}
+        {component.children && Array.isArray(component.children) ? renderComponents(component.children, dataContext, onNavigate) : null}
       </DynamicComponent>
     );
   });

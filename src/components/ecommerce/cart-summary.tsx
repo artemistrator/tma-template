@@ -16,6 +16,14 @@ interface CartSummaryProps {
   promoCodeEnabled?: boolean;
   onCheckout?: () => void;
   className?: string;
+  props?: {
+    showSubtotal?: boolean;
+    showDiscount?: boolean;
+    showTotal?: boolean;
+    promoCodeEnabled?: boolean;
+    onCheckout?: string;
+  };
+  onNavigate?: (pageId: string) => void;
 }
 
 /**
@@ -24,13 +32,22 @@ interface CartSummaryProps {
  */
 export function CartSummary({
   id,
-  showSubtotal = true,
-  showDiscount = true,
-  showTotal = true,
-  promoCodeEnabled = true,
+  showSubtotal: directShowSubtotal = true,
+  showDiscount: directShowDiscount = true,
+  showTotal: directShowTotal = true,
+  promoCodeEnabled: directPromoCodeEnabled = true,
   onCheckout,
   className,
+  props,
+  onNavigate,
 }: CartSummaryProps) {
+  // Support both direct props and nested props from schema
+  const showSubtotal = props?.showSubtotal ?? directShowSubtotal;
+  const showDiscount = props?.showDiscount ?? directShowDiscount;
+  const showTotal = props?.showTotal ?? directShowTotal;
+  const promoCodeEnabled = props?.promoCodeEnabled ?? directPromoCodeEnabled;
+  const checkoutAction = props?.onCheckout ?? onCheckout;
+
   const total = useCartStore((state) => state.total);
   const items = useCartStore((state) => state.items);
   const promoCode = useCartStore((state) => state.promoCode);
@@ -45,20 +62,25 @@ export function CartSummary({
 
   const handleApplyPromo = () => {
     hapticFeedback.impact('light');
-    
+
     // Simple validation - in real app, validate via API
     if (promoInput.trim().length < 3) {
       setPromoError('Promo code must be at least 3 characters');
       return;
     }
-    
+
     applyPromoCode(promoInput.trim());
     setPromoError('');
   };
 
   const handleCheckout = () => {
     hapticFeedback.impact('medium');
-    onCheckout?.();
+
+    // Handle navigation string like "navigate:checkout"
+    if (typeof checkoutAction === 'string' && checkoutAction.startsWith('navigate:')) {
+      const targetPage = checkoutAction.split(':')[1];
+      onNavigate?.(targetPage);
+    }
   };
 
   return (

@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { useTelegramContext } from '@/lib/telegram/telegram-provider';
 import { ChevronDown, ChevronUp, Filter, X } from 'lucide-react';
+import { useProductStore } from '@/store/product-store';
 
 export interface FilterOption {
   id: string;
@@ -43,8 +44,13 @@ export function FilterPanel({
   const [localPriceRange, setLocalPriceRange] = useState<[number, number]>(
     selectedPriceRange || [priceRange.min, priceRange.max]
   );
-  
+
   const { hapticFeedback } = useTelegramContext();
+  
+  // Connect to product store
+  const toggleCategoryStore = useProductStore((state) => state.toggleCategory);
+  const setPriceRangeStore = useProductStore((state) => state.setPriceRange);
+  const clearAllFilters = useProductStore((state) => state.clearAllFilters);
 
   const toggleCategory = (categoryId: string) => {
     hapticFeedback.impact('light');
@@ -53,11 +59,13 @@ export function FilterPanel({
         ? prev.filter((id) => id !== categoryId)
         : [...prev, categoryId]
     );
+    toggleCategoryStore(categoryId);
   };
 
   const handleApplyFilters = () => {
     hapticFeedback.impact('medium');
     setIsExpanded(false);
+    setPriceRangeStore(localPriceRange);
     onApplyFilters?.({
       categories: localCategories,
       priceRange: localPriceRange,
@@ -68,10 +76,11 @@ export function FilterPanel({
     hapticFeedback.impact('light');
     setLocalCategories([]);
     setLocalPriceRange([priceRange.min, priceRange.max]);
+    clearAllFilters();
     onClearFilters?.();
   };
 
-  const hasActiveFilters = localCategories.length > 0 || 
+  const hasActiveFilters = localCategories.length > 0 ||
     (localPriceRange[0] !== priceRange.min || localPriceRange[1] !== priceRange.max);
 
   const formatPrice = (value: number) => `$${value.toFixed(0)}`;
@@ -95,7 +104,7 @@ export function FilterPanel({
             <ChevronDown className="w-4 h-4" />
           )}
         </button>
-        
+
         {hasActiveFilters && (
           <Button
             variant="ghost"

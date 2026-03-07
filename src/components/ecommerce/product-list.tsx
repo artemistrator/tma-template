@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ProductCard } from './product-card';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useProductStore } from '@/store/product-store';
 
 interface Product {
   id: string;
@@ -12,6 +13,7 @@ interface Product {
   image?: string;
   description?: string;
   category?: string;
+  badge?: string;
 }
 
 interface ProductListProps {
@@ -33,6 +35,7 @@ interface ProductListProps {
   onAddToCart?: (productId: string) => void;
   className?: string;
   emptyMessage?: string;
+  enableFiltering?: boolean;
 }
 
 /**
@@ -52,15 +55,72 @@ export function ProductList({
   onAddToCart,
   className,
   emptyMessage = "No products found",
+  enableFiltering = false,
 }: ProductListProps) {
   // Use data from props.data or direct data
-  const data = props?.data || directData || [];
+  const data = React.useMemo(() => props?.data || directData || [], [props?.data, directData]);
   const pageLimit = props?.limit || limit;
   const pageColumns = (props?.columns as 1 | 2 | 3) || columns;
   const pageTitle = props?.title || title;
   const pageDescription = props?.description || description;
-  
-  const limitedData = pageLimit ? data.slice(0, pageLimit) : data;
+
+  // Subscribe to store for filtering
+  const setAllProducts = useProductStore((state) => state.setAllProducts);
+  const searchQuery = useProductStore((state) => state.searchQuery);
+  const selectedCategories = useProductStore((state) => state.selectedCategories);
+  const priceRange = useProductStore((state) => state.priceRange);
+  const allProducts = useProductStore((state) => state.allProducts);
+
+  // Initialize products in store if enableFiltering is true
+  useEffect(() => {
+    if (enableFiltering && data.length > 0) {
+      setAllProducts(data);
+    }
+  }, [enableFiltering, data, setAllProducts]);
+
+  // Filter products based on search and filters
+  const displayData = React.useMemo(() => {
+    if (!enableFiltering) {
+      return pageLimit ? data.slice(0, pageLimit) : data;
+    }
+
+    // Filter allProducts based on current filters
+    let filtered = [...allProducts];
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((product) =>
+        product.name.toLowerCase().includes(query) ||
+        product.description?.toLowerCase().includes(query) ||
+        product.category?.toLowerCase().includes(query)
+      );
+    }
+
+    // Category filter
+    if (selectedCategories.length > 0) {
+      const categoryMap: Record<string, string[]> = {
+        'audio': ['audio'],
+        'wearables': ['wearables'],
+        'accessories': ['accessories'],
+        'peripherals': ['peripherals'],
+      };
+      filtered = filtered.filter((product) => {
+        if (!product.category) return false;
+        const categoryKey = product.category.toLowerCase();
+        return selectedCategories.some((catId) =>
+          categoryMap[catId]?.includes(categoryKey)
+        );
+      });
+    }
+
+    // Price filter
+    filtered = filtered.filter(
+      (product) => product.price >= priceRange[0] && product.price <= priceRange[1]
+    );
+
+    return pageLimit ? filtered.slice(0, pageLimit) : filtered;
+  }, [enableFiltering, allProducts, searchQuery, selectedCategories, priceRange, data, pageLimit]);
 
   const gridCols = {
     1: "grid-cols-1",
@@ -86,9 +146,14 @@ export function ProductList({
     );
   }
 
-  if (limitedData.length === 0) {
+  if (displayData.length === 0) {
     return (
-      <div className={cn("text-center py-12", className)}>
+      <div className={cn("text-center py-12", className)} id={id}>
+        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+          <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
         <p className="text-muted-foreground">{emptyMessage}</p>
       </div>
     );
@@ -104,7 +169,7 @@ export function ProductList({
       )}
 
       <div className={cn("grid gap-4", gridCols[pageColumns])}>
-        {limitedData.map((product) => (
+        {displayData.map((product) => (
           <ProductCard
             key={product.id}
             productId={product.id}
@@ -113,6 +178,7 @@ export function ProductList({
             image={product.image}
             description={product.description}
             category={product.category}
+            badge={product.badge}
             onClick={() => onProductClick?.(product.id)}
             onAddToCart={() => onAddToCart?.(product.id)}
           />

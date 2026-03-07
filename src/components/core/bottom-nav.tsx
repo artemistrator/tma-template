@@ -37,6 +37,15 @@ const navItems: NavItem[] = [
     ),
   },
   {
+    id: 'favorites',
+    label: 'Favorites',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      </svg>
+    ),
+  },
+  {
     id: 'cart',
     label: 'Cart',
     icon: (
@@ -65,7 +74,7 @@ export function BottomNav({ currentPage, onNavigate, className }: BottomNavProps
       "fixed bottom-0 left-0 right-0 bg-background border-t safe-area-inset-bottom z-50",
       className
     )}>
-      <div className="grid grid-cols-3 h-16">
+      <div className="grid grid-cols-4 h-16">
         {navItems.map((item) => {
           const isActive = currentPage === item.id;
           const showBadge = item.id === 'cart' && cartItemCount > 0;

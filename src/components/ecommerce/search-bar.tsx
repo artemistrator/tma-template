@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useTelegramContext } from '@/lib/telegram/telegram-provider';
 import { Search, X } from 'lucide-react';
+import { useProductStore } from '@/store/product-store';
 
 interface SearchBarProps {
   placeholder?: string;
@@ -31,19 +32,22 @@ export function SearchBar({
   const [value, setValue] = useState(controlledValue || defaultValue);
   const [isFocused, setIsFocused] = useState(false);
   const { hapticFeedback } = useTelegramContext();
+  const setSearchQuery = useProductStore((state) => state.setSearchQuery);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setValue(newValue);
+    setSearchQuery(newValue);
     onSearch?.(newValue);
-  }, [onSearch]);
+  }, [onSearch, setSearchQuery]);
 
   const handleClear = useCallback(() => {
     hapticFeedback.impact('light');
     setValue('');
+    setSearchQuery('');
     onClear?.();
     onSearch?.('');
-  }, [hapticFeedback, onClear, onSearch]);
+  }, [hapticFeedback, onClear, onSearch, setSearchQuery]);
 
   const handleFocus = () => {
     setIsFocused(true);

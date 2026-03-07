@@ -36,8 +36,13 @@ export default function Home() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
+      console.log('Hash changed:', hash);
       if (hash && schema?.pages.find(p => p.id === hash)) {
         setCurrentPageId(hash);
+      } else if (hash && schema) {
+        // If hash doesn't match, default to home
+        console.warn('Page not found:', hash, 'Available pages:', schema.pages.map(p => p.id));
+        setCurrentPageId('home');
       }
     };
 
@@ -48,6 +53,7 @@ export default function Home() {
   }, [schema]);
 
   const handleNavigate = (pageId: string) => {
+    console.log('Navigating to:', pageId);
     setCurrentPageId(pageId);
     window.location.hash = pageId;
   };

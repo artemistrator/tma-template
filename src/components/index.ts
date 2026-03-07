@@ -14,6 +14,7 @@ import { CheckoutForm } from './ecommerce/checkout-form';
 import { PaymentButton } from './ecommerce/payment-button';
 import { OrderSuccess } from './ecommerce/order-success';
 import { OrderFailed } from './ecommerce/order-failed';
+import { OrdersList } from './ecommerce/orders-list';
 import { SearchBar } from './ecommerce/search-bar';
 import { FilterPanel } from './ecommerce/filter-panel';
 import type { ComponentFactoryProps } from '@/lib/renderer/component-registry';
@@ -39,6 +40,7 @@ export function initializeComponents() {
   registerComponent('PaymentButton', PaymentButton as unknown as React.ComponentType<ComponentFactoryProps>);
   registerComponent('OrderSuccess', OrderSuccess as unknown as React.ComponentType<ComponentFactoryProps>);
   registerComponent('OrderFailed', OrderFailed as unknown as React.ComponentType<ComponentFactoryProps>);
+  registerComponent('OrdersList', OrdersList as unknown as React.ComponentType<ComponentFactoryProps>);
   registerComponent('SearchBar', SearchBar as unknown as React.ComponentType<ComponentFactoryProps>);
   registerComponent('FilterPanel', FilterPanel as unknown as React.ComponentType<ComponentFactoryProps>);
   
@@ -64,5 +66,6 @@ export { CheckoutForm } from './ecommerce/checkout-form';
 export { PaymentButton, PaymentStatus } from './ecommerce/payment-button';
 export { OrderSuccess } from './ecommerce/order-success';
 export { OrderFailed } from './ecommerce/order-failed';
+export { OrdersList } from './ecommerce/orders-list';
 export { SearchBar } from './ecommerce/search-bar';
 export { FilterPanel } from './ecommerce/filter-panel';

@@ -75,7 +75,7 @@ export function PageRenderer({ page, dataContext = {}, onNavigate }: PageRendere
       </header>
 
       <main className="container mx-auto px-4 py-6">
-        {renderComponents(page.components || [], dataContext)}
+        {renderComponents(page.components || [], dataContext, onNavigate)}
       </main>
 
       <BottomNav currentPage={page.id} onNavigate={onNavigate || (() => {})} />
