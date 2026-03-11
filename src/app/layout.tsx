@@ -34,7 +34,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AppConfigProvider initialTenantId="demo-tenant">
+        <AppConfigProvider defaultTenantSlug="pizza">
           <TelegramProvider>
             {children}
           </TelegramProvider>

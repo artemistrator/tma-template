@@ -7,6 +7,7 @@ interface AppConfigContextValue {
   config: MiniAppSchemaType | null;
   loading: boolean;
   error: Error | null;
+  tenantSlug: string;
   tenantId: string;
   reloadConfig: () => Promise<void>;
 }
@@ -15,27 +16,37 @@ const AppConfigContext = createContext<AppConfigContextValue | null>(null);
 
 interface AppConfigProviderProps {
   children: React.ReactNode;
-  initialTenantId?: string;
+  defaultTenantSlug?: string;
 }
 
-export function AppConfigProvider({ children, initialTenantId = 'default' }: AppConfigProviderProps) {
+/**
+ * Get tenant slug from URL query parameter
+ * Example: ?tenant=pizza or ?tenant=barber
+ */
+function getTenantSlugFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('tenant');
+}
+
+export function AppConfigProvider({ children, defaultTenantSlug = 'pizza' }: AppConfigProviderProps) {
   const [config, setConfig] = useState<MiniAppSchemaType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [tenantId, setTenantId] = useState(initialTenantId);
+  const [tenantSlug, setTenantSlug] = useState(defaultTenantSlug);
+  const [tenantId, setTenantId] = useState('');
 
-  const loadConfig = useCallback(async (tenant: string) => {
+  const loadConfig = useCallback(async (slug: string) => {
     setLoading(true);
     setError(null);
 
     try {
-      console.log('[AppConfigProvider] Fetching config for tenant:', tenant);
+      console.log('[AppConfigProvider] Fetching config for tenant slug:', slug);
       
-      const response = await fetch('/api/config', {
+      const response = await fetch(`/api/config?tenant=${slug}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': tenant,
         },
       });
 
@@ -46,12 +57,14 @@ export function AppConfigProvider({ children, initialTenantId = 'default' }: App
       }
 
       console.log('[AppConfigProvider] Config loaded successfully:', {
+        tenantSlug: data.tenantSlug,
         tenantId: data.tenantId,
         appTitle: data.config.meta.title,
         appType: data.config.meta.appType,
       });
 
       setConfig(data.config);
+      setTenantSlug(data.tenantSlug);
       setTenantId(data.tenantId);
     } catch (err) {
       console.error('[AppConfigProvider] Error loading config:', err);
@@ -62,17 +75,22 @@ export function AppConfigProvider({ children, initialTenantId = 'default' }: App
   }, []);
 
   const reloadConfig = useCallback(async () => {
-    await loadConfig(tenantId);
-  }, [tenantId, loadConfig]);
+    await loadConfig(tenantSlug);
+  }, [tenantSlug, loadConfig]);
 
   useEffect(() => {
-    loadConfig(initialTenantId);
-  }, [initialTenantId, loadConfig]);
+    // Get tenant slug from URL or use default
+    const urlSlug = getTenantSlugFromUrl();
+    const slug = urlSlug || defaultTenantSlug;
+    console.log('[AppConfigProvider] Initial tenant slug:', slug, '(from URL:', urlSlug, ')');
+    loadConfig(slug);
+  }, [defaultTenantSlug, loadConfig]);
 
   const value: AppConfigContextValue = {
     config,
     loading,
     error,
+    tenantSlug,
     tenantId,
     reloadConfig,
   };

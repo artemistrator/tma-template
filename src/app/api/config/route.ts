@@ -1,40 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { demoConfig } from '@/config/demo';
+import { getTenantConfig, tenantExists, getAvailableTenants } from '@/lib/tenant-registry';
 import { validateMiniAppSchema, type MiniAppSchemaType } from '@/lib/schema/mini-app-schema';
 
 /**
  * GET /api/config
  * 
- * Returns app configuration based on tenant ID.
- * 
- * Headers:
- *  - x-tenant-id: Tenant identifier (optional)
+ * Returns app configuration based on tenant slug.
  * 
  * Query Params:
- *  - tenant: Tenant identifier (optional, fallback if header not provided)
+ *  - tenant: Tenant slug (required) - e.g., 'pizza', 'barber'
+ * 
+ * Headers:
+ *  - x-tenant-id: Tenant identifier (optional, fallback if query param not provided)
  * 
  * Response:
- *  - MiniAppSchemaType: Validated app configuration
+ *  - success: boolean
+ *  - config: MiniAppSchemaType (if found)
+ *  - error: string (if not found)
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get tenant ID from header or query param
-    const tenantIdFromHeader = request.headers.get('x-tenant-id');
-    const tenantIdFromQuery = request.nextUrl.searchParams.get('tenant');
-    const tenantId = tenantIdFromHeader || tenantIdFromQuery || 'default';
+    // Get tenant slug from query param (primary) or header (fallback)
+    const tenantSlugFromQuery = request.nextUrl.searchParams.get('tenant');
+    const tenantSlugFromHeader = request.headers.get('x-tenant-slug');
+    const tenantSlug = tenantSlugFromQuery || tenantSlugFromHeader || 'pizza';
 
-    console.log(`[Config API] Request received for tenant: ${tenantId}`);
+    console.log(`[Config API] Request received for tenant slug: ${tenantSlug}`);
+    console.log(`[Config API] Available tenants: ${getAvailableTenants().join(', ')}`);
 
-    // TODO: In production, fetch tenant config from database
-    // For now, return demoConfig with tenant-specific overrides
-    const config: MiniAppSchemaType = {
-      ...demoConfig,
-      meta: {
-        ...demoConfig.meta,
-        tenantId,
-        slug: tenantId === 'default' ? 'demo-shop' : tenantId,
-      },
-    };
+    // Check if tenant exists in registry
+    if (!tenantExists(tenantSlug)) {
+      console.warn(`[Config API] Tenant not found: ${tenantSlug}`);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Tenant not found',
+          message: `No configuration found for tenant '${tenantSlug}'. Available tenants: ${getAvailableTenants().join(', ')}`,
+          availableTenants: getAvailableTenants(),
+        },
+        { status: 404 }
+      );
+    }
+
+    // Get tenant config from registry
+    const config: MiniAppSchemaType | null = getTenantConfig(tenantSlug);
+    
+    if (!config) {
+      console.error(`[Config API] Config is null for tenant: ${tenantSlug}`);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Configuration not found',
+        },
+        { status: 500 }
+      );
+    }
 
     // Validate config before returning
     const validation = validateMiniAppSchema(config);
@@ -50,12 +70,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`[Config API] Config returned successfully for tenant: ${tenantId}`);
+    console.log(`[Config API] Config returned successfully:`, {
+      tenantSlug,
+      title: validation.data?.meta.title,
+      appType: validation.data?.meta.appType,
+      tenantId: validation.data?.meta.tenantId,
+    });
 
     return NextResponse.json({
       success: true,
       config: validation.data,
-      tenantId,
+      tenantSlug,
+      tenantId: validation.data?.meta.tenantId || '',
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
