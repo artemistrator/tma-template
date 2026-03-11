@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { PageRenderer } from '@/lib/renderer/page-renderer';
 import { MiniAppSchemaType, validateMiniAppSchema } from '@/lib/schema/mini-app-schema';
 import { initializeComponents } from '@/components';
-import demoConfig from '@/config/demo.json';
+import { demoConfig } from '@/config/demo';
 import { useCartItemCount } from '@/store/cart-store';
 
 // Force dynamic rendering to avoid SSR issues with window object

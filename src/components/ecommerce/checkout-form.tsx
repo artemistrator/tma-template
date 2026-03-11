@@ -154,17 +154,34 @@ export function CheckoutForm({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={async () => {
-                    setIsRequestingPhone(true);
-                    hapticFeedback.impact('light');
-                    await requestPhoneContact();
-                    setIsRequestingPhone(false);
-                  }}
-                  disabled={isRequestingPhone}
-                >
-                  {isRequestingPhone ? '...' : 'Get from TG'}
-                </Button>
-              )}
+                onClick={async () => {
+                   setIsRequestingPhone(true);
+                   hapticFeedback.impact('light');
+                 console.log('Requesting phone contact from Telegram...');
+                   try {
+                   const result = await requestPhoneContact();
+                   console.log('Phone contact result:', result);
+                     if (result) {
+                       hapticFeedback.success();
+                     console.log('Phone received successfully');
+                     } else {
+                       hapticFeedback.error();
+                     console.warn('User cancelled phone request or error occurred');
+                     }
+                   } catch (error) {
+                   console.error('Error getting phone from Telegram:', error);
+                     hapticFeedback.error();
+                   showAlert('Failed to get phone from Telegram');
+                   } finally {
+                     setIsRequestingPhone(false);
+                   }
+                 }}
+                 disabled={isRequestingPhone}
+               >
+                 {isRequestingPhone ? '...' : 'Get from TG'}
+               </Button>
+             )}
+
             </div>
             {errors.phone && (
               <p className="text-sm text-destructive mt-1">{errors.phone}</p>

@@ -10,13 +10,14 @@ interface OrderSuccessProps {
   orderId?: string;
   total?: number;
   onContinue?: () => void;
+  onNavigate?: (pageId: string) => void;
 }
 
 /**
  * OrderSuccess - Order confirmation page
  * Displayed after successful order placement
  */
-export function OrderSuccess({ orderId, total, onContinue }: OrderSuccessProps) {
+export function OrderSuccess({ orderId, total, onContinue, onNavigate }: OrderSuccessProps) {
   const { hapticFeedback } = useTelegramContext();
 
   useEffect(() => {
@@ -25,7 +26,20 @@ export function OrderSuccess({ orderId, total, onContinue }: OrderSuccessProps) 
 
   const handleContinue = () => {
     hapticFeedback.impact('light');
-    onContinue?.();
+    if (onContinue) {
+      onContinue();
+    } else if (onNavigate) {
+      onNavigate('home');
+    }
+  };
+
+  const handleViewOrders = () => {
+    hapticFeedback.impact('light');
+    if (onNavigate) {
+      onNavigate('orders');
+    } else if (onContinue) {
+      onContinue();
+    }
   };
 
   return (
@@ -97,14 +111,14 @@ export function OrderSuccess({ orderId, total, onContinue }: OrderSuccessProps) 
               Continue Shopping
             </Button>
             
-            <Button variant="outline" className="w-full" onClick={handleContinue}>
+            <Button variant="outline" className="w-full" onClick={handleViewOrders}>
               View Order History
             </Button>
           </div>
         </div>
       </main>
 
-      <BottomNav currentPage="home" onNavigate={onContinue || (() => {})} />
+      <BottomNav currentPage="home" onNavigate={onNavigate || onContinue || (() => {})} />
     </div>
   );
 }

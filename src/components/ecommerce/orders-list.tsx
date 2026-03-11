@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useCartStore } from '@/store/cart-store';
+import Image from 'next/image';
 
 interface OrderItem {
   id: string;
@@ -29,30 +31,36 @@ interface OrdersListProps {
   description?: string;
   orders?: Order[];
   props?: {
-    orders?: Order[];
-    title?: string;
-    description?: string;
+   orders?: Order[];
+   title?: string;
+   description?: string;
+   showUserOrdersOnly?: boolean;
+   onOrderClick?: string | ((orderId: string) => void);
   };
   onOrderClick?: (orderId: string) => void;
   onReorder?: (orderId: string) => void;
   className?: string;
   emptyMessage?: string;
+  showUserOrdersOnly?: boolean;
+  onNavigate?: (pageId: string) => void;
 }
 
-const statusColors: Record<Order['status'], string> = {
+const statusColors: Record<Order['status'] | 'confirmed', string> = {
   pending: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
   processing: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
   shipped: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
   delivered: 'bg-green-500/10 text-green-500 border-green-500/20',
   cancelled: 'bg-red-500/10 text-red-500 border-red-500/20',
+  confirmed: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
 };
 
-const statusLabels: Record<Order['status'], string> = {
+const statusLabels: Record<Order['status'] | 'confirmed', string> = {
   pending: 'Pending',
   processing: 'Processing',
   shipped: 'Shipped',
   delivered: 'Delivered',
   cancelled: 'Cancelled',
+  confirmed: 'Confirmed',
 };
 
 /**
@@ -62,17 +70,58 @@ const statusLabels: Record<Order['status'], string> = {
 export function OrdersList({
   id,
   title = 'My Orders',
-  description,
-  orders: directOrders,
-  props,
+ description,
+ orders: directOrders,
+ props,
   onOrderClick,
   onReorder,
   className,
   emptyMessage = "No orders yet",
+  showUserOrdersOnly: showUserOrdersOnlyProp = false,
+  onNavigate,
 }: OrdersListProps) {
-  const orders = props?.orders || directOrders || [];
-  const pageTitle = props?.title || title;
-  const pageDescription = props?.description || description;
+ const ordersFromStore = useCartStore((state) => state.orders);
+
+ // Use store orders if showUserOrdersOnly is true (check both direct prop and nested props)
+ const showUserOrdersOnly = props?.showUserOrdersOnly ?? showUserOrdersOnlyProp;
+ const orders = showUserOrdersOnly ? ordersFromStore : (props?.orders || directOrders || []);
+
+ // Handle onOrderClick - can be string (navigate:) or function
+ const handleOrderClick = (orderId: string) => {
+  // Check if onOrderClick is a navigate string
+  const navigateString = typeof onOrderClick === 'string' ? onOrderClick : props?.onOrderClick;
+  const customHandler = typeof onOrderClick === 'function' ? onOrderClick : undefined;
+  
+  if (typeof navigateString === 'string' && navigateString.startsWith('navigate:')) {
+    // Extract pageId from navigate:pageId
+    const pageId = navigateString.split(':')[1];
+    // Append orderId as hash parameter for details page
+    if (pageId === 'order-details') {
+      window.location.hash = `${pageId}?orderId=${orderId}`;
+    } else {
+      window.location.hash = pageId;
+    }
+    onNavigate?.(pageId);
+  } else if (customHandler) {
+    customHandler(orderId);
+  } else if (onNavigate) {
+    // Default behavior: navigate to order-details with orderId
+    window.location.hash = `order-details?orderId=${orderId}`;
+    onNavigate('order-details');
+  }
+ };
+ 
+ // Debug logging
+ console.log('OrdersList- showUserOrdersOnly:', showUserOrdersOnly);
+ console.log('OrdersList- raw props:', props);
+ console.log('OrdersList- orders from store:', ordersFromStore.length);
+ console.log('OrdersList- displaying orders:', orders.length);
+ if (orders.length > 0) {
+ console.log('OrdersList- first order:', orders[0]);
+ }
+ 
+ const pageTitle = props?.title || title;
+ const pageDescription = props?.description || description;
 
   if (orders.length === 0) {
     return (
@@ -110,11 +159,11 @@ export function OrdersList({
 
       <div className="space-y-3">
         {orders.map((order) => (
-          <Card
-            key={order.id}
-            className="overflow-hidden cursor-pointer hover:bg-accent/50 transition-colors"
-            onClick={() => onOrderClick?.(order.id)}
-          >
+         <Card
+           key={order.id}
+           className="overflow-hidden cursor-pointer hover:bg-accent/50 transition-colors"
+          onClick={() => handleOrderClick(order.id)}
+         >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -141,13 +190,15 @@ export function OrdersList({
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {order.items.slice(0, 4).map((item, index) => (
                   <div key={index} className="flex-shrink-0 w-16 h-16 rounded-md bg-muted overflow-hidden">
-                    {item.image ? (
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
+                   {item.image ? (
+                    <Image
+                      src={item.image}
+                      alt={item.name}
+                      width={64}
+                      height={64}
+                      className="object-cover"
+                    />
+                   ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                         <svg
                           className="w-6 h-6"
@@ -194,7 +245,10 @@ export function OrdersList({
                       Reorder
                     </Button>
                   )}
-                  <Button size="sm">Details</Button>
+                  <Button size="sm" onClick={(e) => {
+                   e.stopPropagation();
+                  handleOrderClick(order.id);
+                 }}>Details</Button>
                 </div>
               </div>
             </CardContent>

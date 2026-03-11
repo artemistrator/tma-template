@@ -37,7 +37,7 @@ export interface Order {
   total: number;
   shippingAddress: ShippingAddress;
   telegramUser?: TelegramUser;
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   createdAt: string;
 }
 

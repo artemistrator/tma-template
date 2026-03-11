@@ -20,7 +20,7 @@ interface PaymentButtonProps {
   props?: {
     text?: string;
     variant?: 'default' | 'telegram' | 'outline';
-    onPaymentSuccess?: string;
+   onPaymentSuccess?: string;
   };
   onNavigate?: (pageId: string) => void;
 }
@@ -47,7 +47,7 @@ export function PaymentButton({
   const shippingAddress = useCartStore((state) => state.shippingAddress);
   const items = useCartStore((state) => state.items);
   const clearCart = useCartStore((state) => state.clearCart);
-  const addOrder = useCartStore((state) => state.addOrder);
+  const addOrder= useCartStore((state) => state.addOrder);
   const { isTelegram, showAlert, hapticFeedback } = useTelegramContext();
 
   // Support both direct props and nested props from schema
@@ -58,14 +58,14 @@ export function PaymentButton({
   const handlePayment = async () => {
     if (!shippingAddress) {
       hapticFeedback.error();
-      showAlert('Please enter shipping address first');
-      return;
+     showAlert('Please enter shipping address first');
+     return;
     }
 
     if (items.length === 0) {
       hapticFeedback.error();
-      showAlert('Your cart is empty');
-      return;
+     showAlert('Your cart is empty');
+     return;
     }
 
     setIsProcessing(true);
@@ -81,45 +81,109 @@ export function PaymentButton({
       }
     } catch (error) {
       hapticFeedback.error();
-      onPaymentError?.(error as Error);
+     onPaymentError?.(error as Error);
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleTelegramPayment = async () => {
-    return new Promise<void>((resolve) => {
-      /**
-       * TODO: Integrate Telegram Payment API
-       */
-
-      // Mock payment flow for demo
-      setTimeout(() => {
-        const orderId = `ORD-${Date.now().toString().slice(-6)}`;
-
-        // Create order in store
-        addOrder({
-          id: orderId,
-          items: [...items],
-          total: paymentAmount,
-          shippingAddress: shippingAddress!,
-          status: 'confirmed',
-          createdAt: new Date().toISOString(),
-        });
-
-        hapticFeedback.success();
-        clearCart();
-        
-        // Handle navigation string like "navigate:order-success"
-        if (typeof successCallback === 'string' && successCallback.startsWith('navigate:')) {
-          const targetPage = successCallback.split(':')[1];
-          onNavigate?.(targetPage);
-        } else if (typeof successCallback === 'function') {
-          successCallback(orderId);
+   return new Promise<void>(async (resolve, reject) => {
+      // Check if Telegram WebApp is available
+     type TelegramWebApp = {
+       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       sendInvoice: (invoiceData: any, callback: (success: boolean) => void) => void;
+     };
+     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     const WebApp = (window as unknown as { Telegram?: { WebApp?: TelegramWebApp } }).Telegram?.WebApp;
+      
+      if (!WebApp) {
+        // Fallback if not in Telegram
+       console.warn('Telegram WebApp not available, using fallback');
+        try {
+          await handleWebPayment();
+         resolve();
+        } catch (error) {
+         reject(error);
         }
-        
-        resolve();
-      }, 1500);
+       return;
+      }
+
+      // Use Telegram invoice
+     const invoiceData = {
+       title: 'Order Payment',
+        description: `Order #${Date.now().toString().slice(-6)}`,
+        payload: JSON.stringify({
+          items: items.map(i => ({ id: i.id, name: i.name, quantity: i.quantity })),
+        }),
+        provider_token: '', // Empty for test mode
+        currency: 'USD',
+        prices: items.map(item => ({
+         label: item.name,
+          amount: Math.round(item.price * 100), // Convert to cents
+        })),
+      };
+
+      // Send invoice
+      WebApp.sendInvoice(invoiceData, async (success: boolean) => {
+        if (success) {
+         const orderId = `ORD-${Date.now().toString().slice(-6)}`;
+
+          addOrder({
+           id: orderId,
+            items: [...items],
+           total: paymentAmount,
+           shippingAddress: shippingAddress!,
+           status: 'confirmed',
+            createdAt: new Date().toISOString(),
+          });
+
+          hapticFeedback.success();
+          clearCart();
+
+          // Send Telegram notification to admin
+          try {
+            await fetch('/api/notify-admin', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                order: {
+                  id: orderId,
+                  total: paymentAmount,
+                  items: items,
+                  status: 'confirmed',
+                },
+                customer: {
+                  id: shippingAddress?.name, // Will be updated from Telegram user
+                  firstName: shippingAddress?.name?.split(' ')[0],
+                  lastName: shippingAddress?.name?.split(' ')[1],
+                  username: '',
+                  phone: shippingAddress?.phone,
+                  address: shippingAddress?.address,
+                  city: shippingAddress?.city,
+                  zipCode: shippingAddress?.zipCode,
+                  country: shippingAddress?.country,
+                },
+              }),
+            });
+           console.log('Telegram notification sent for order:', orderId);
+          } catch (error) {
+           console.error('Failed to send Telegram notification:', error);
+          }
+
+          if (typeof successCallback === 'string' && successCallback.startsWith('navigate:')) {
+           const targetPage = successCallback.split(':')[1];
+           onNavigate?.(targetPage);
+          } else if (typeof successCallback === 'function') {
+            successCallback(orderId);
+          }
+
+         resolve();
+        } else {
+          hapticFeedback.error();
+         reject(new Error('Payment cancelled'));
+        }
+      });
     });
   };
 
@@ -128,17 +192,17 @@ export function PaymentButton({
      * TODO: Integrate payment gateway (Stripe, PayPal, etc.)
      */
 
-    return new Promise<void>((resolve) => {
+   return new Promise<void>((resolve) => {
       setTimeout(() => {
-        const orderId = `ORD-${Date.now().toString().slice(-6)}`;
+       const orderId = `ORD-${Date.now().toString().slice(-6)}`;
 
         // Create order in store
         addOrder({
-          id: orderId,
+         id: orderId,
           items: [...items],
-          total: paymentAmount,
-          shippingAddress: shippingAddress!,
-          status: 'confirmed',
+         total: paymentAmount,
+         shippingAddress: shippingAddress!,
+         status: 'confirmed',
           createdAt: new Date().toISOString(),
         });
 
@@ -147,30 +211,30 @@ export function PaymentButton({
         
         // Handle navigation string like "navigate:order-success"
         if (typeof successCallback === 'string' && successCallback.startsWith('navigate:')) {
-          const targetPage = successCallback.split(':')[1];
-          onNavigate?.(targetPage);
+         const targetPage = successCallback.split(':')[1];
+         onNavigate?.(targetPage);
         } else if (typeof successCallback === 'function') {
           successCallback(orderId);
         }
         
-        resolve();
+       resolve();
       }, 1500);
     });
   };
 
   const formattedAmount = new Intl.NumberFormat('en-US', {
-    style: 'currency',
+   style: 'currency',
     currency,
   }).format(paymentAmount);
 
   const buttonVariant = variant === 'outline' ? 'outline' : 'default';
 
-  return (
+ return (
     <Button
-      id={id}
+     id={id}
       className={cn("w-full h-12 text-base font-semibold", className)}
       variant={buttonVariant}
-      onClick={handlePayment}
+     onClick={handlePayment}
       disabled={disabled || isProcessing || items.length === 0}
     >
       {isProcessing ? (
@@ -216,7 +280,7 @@ export function PaymentStatus({
     }
   }, [success, hapticFeedback]);
 
-  return (
+ return (
     <div className={cn("text-center py-8", className)}>
       <div
         className={cn(

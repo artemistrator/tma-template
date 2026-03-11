@@ -5,6 +5,7 @@ import { ProductCard } from './product-card';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProductStore } from '@/store/product-store';
+import { useCartStore } from '@/store/cart-store';
 
 interface Product {
   id: string;
@@ -22,11 +23,14 @@ interface ProductListProps {
   description?: string;
   data?: Product[];
   props?: {
-    data?: Product[];
+  data?: Product[];
     title?: string;
-    description?: string;
-    limit?: number;
-    columns?: 1 | 2 | 3;
+  description?: string;
+   limit?: number;
+  columns?: 1 | 2 | 3;
+  enableFiltering?: boolean;
+  showFavoritesOnly?: boolean;
+  onProductClick?: string | ((productId: string) => void);
   };
   limit?: number;
   columns?: 1 | 2 | 3;
@@ -36,6 +40,8 @@ interface ProductListProps {
   className?: string;
   emptyMessage?: string;
   enableFiltering?: boolean;
+  showFavoritesOnly?: boolean;
+  onNavigate?: (pageId: string) => void;
 }
 
 /**
@@ -49,20 +55,26 @@ export function ProductList({
   data: directData,
   props,
   limit,
-  columns = 2,
+ columns = 2,
   loading = false,
   onProductClick,
   onAddToCart,
   className,
   emptyMessage = "No products found",
-  enableFiltering = false,
+  enableFiltering: directEnableFiltering = false,
+  showFavoritesOnly: directShowFavoritesOnly= false,
+  onNavigate,
 }: ProductListProps) {
-  // Use data from props.data or direct data
-  const data = React.useMemo(() => props?.data || directData || [], [props?.data, directData]);
-  const pageLimit = props?.limit || limit;
-  const pageColumns = (props?.columns as 1 | 2 | 3) || columns;
-  const pageTitle = props?.title || title;
-  const pageDescription = props?.description || description;
+  // Support both direct props and nested props from schema
+ const enableFiltering= props?.enableFiltering ?? directEnableFiltering;
+ const showFavoritesOnly = props?.showFavoritesOnly ?? directShowFavoritesOnly;
+  
+  //Use data from props.data or direct data
+ const data = React.useMemo(() => props?.data || directData || [], [props?.data, directData]);
+ const pageLimit = props?.limit || limit;
+ const pageColumns = (props?.columns as 1 | 2 | 3) || columns;
+ const pageTitle = props?.title || title;
+ const pageDescription = props?.description || description;
 
   // Subscribe to store for filtering
   const setAllProducts = useProductStore((state) => state.setAllProducts);
@@ -70,6 +82,9 @@ export function ProductList({
   const selectedCategories = useProductStore((state) => state.selectedCategories);
   const priceRange = useProductStore((state) => state.priceRange);
   const allProducts = useProductStore((state) => state.allProducts);
+  
+  // Favorites
+  const favorites = useCartStore((state) => state.favorites);
 
   // Initialize products in store if enableFiltering is true
   useEffect(() => {
@@ -80,8 +95,13 @@ export function ProductList({
 
   // Filter products based on search and filters
   const displayData = React.useMemo(() => {
+    if (showFavoritesOnly) {
+      // Show only favorite products from the provided data
+     return data.filter(product => favorites.includes(product.id));
+    }
+    
     if (!enableFiltering) {
-      return pageLimit ? data.slice(0, pageLimit) : data;
+     return pageLimit ? data.slice(0, pageLimit) : data;
     }
 
     // Filter allProducts based on current filters
@@ -120,7 +140,7 @@ export function ProductList({
     );
 
     return pageLimit ? filtered.slice(0, pageLimit) : filtered;
-  }, [enableFiltering, allProducts, searchQuery, selectedCategories, priceRange, data, pageLimit]);
+  }, [enableFiltering, showFavoritesOnly, allProducts, searchQuery, selectedCategories, priceRange, data, pageLimit, favorites]);
 
   const gridCols = {
     1: "grid-cols-1",
@@ -179,8 +199,25 @@ export function ProductList({
             description={product.description}
             category={product.category}
             badge={product.badge}
-            onClick={() => onProductClick?.(product.id)}
+            onClick={() => {
+              // Check if onProductClick is a navigate string
+              const navigateString = typeof onProductClick === 'string' ? onProductClick : props?.onProductClick;
+              const customHandler = typeof onProductClick === 'function' ? onProductClick : undefined;
+              
+              if (typeof navigateString === 'string' && navigateString.startsWith('navigate:')) {
+                const pageId = navigateString.split(':')[1];
+                window.location.hash = `${pageId}?productId=${product.id}`;
+                onNavigate?.(pageId);
+              } else if (customHandler) {
+                customHandler(product.id);
+              } else {
+                // Default: navigate to product-details
+                window.location.hash = `product-details?productId=${product.id}`;
+                onNavigate?.('product-details');
+              }
+            }}
             onAddToCart={() => onAddToCart?.(product.id)}
+            onNavigate={onNavigate}
           />
         ))}
       </div>

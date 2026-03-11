@@ -17,6 +17,8 @@ export type ComponentType =
   | 'OrderSuccess'
   | 'OrderFailed'
   | 'OrdersList'
+  | 'OrderDetails'
+  | 'ProductDetails'
   | 'SearchBar'
   | 'FilterPanel'
   | 'Button'
@@ -25,7 +27,7 @@ export type ComponentType =
   | 'Card';
 
 export interface ComponentFactoryProps {
-  type: ComponentType;
+  type?: ComponentType;
   props?: Record<string, unknown>;
   binding?: {
     source?: string;

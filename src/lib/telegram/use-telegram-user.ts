@@ -13,65 +13,54 @@ export function useTelegramUser() {
     if (initData && isTelegram) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tgUser = (initData as any).user as { id?: number; username?: string; first_name?: string; last_name?: string } | undefined;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const contact = (initData as any).contact as { phone_number?: string } | undefined;
-      
+
       const user: TelegramUser = {
         id: tgUser?.id,
         username: tgUser?.username,
         firstName: tgUser?.first_name,
         lastName: tgUser?.last_name,
-        phone: contact?.phone_number,
+        phone: telegramUser?.phone, // Keep existing phone if any
       };
-      
+
       setTelegramUser(user);
     }
   }, [initData, isTelegram, setTelegramUser]);
 
-  // Alternative: Use Telegram's native contact request button
+  // Use Telegram's native contact request
   const requestPhoneContactNative = useCallback(() => {
     return new Promise<TelegramUser | null>((resolve) => {
       if (!isTelegram || !window.Telegram?.WebApp) {
+        console.warn('Not running in Telegram or WebApp not available');
         resolve(null);
         return;
       }
 
-      // Show native contact request popup
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      window.Telegram.WebApp.showPopup({
-        title: 'Phone Number Required',
-        message: 'We need your phone number to process your order. Would you like to share it?',
-        buttons: [
-          {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            type: 'request_phone' as any,
-            text: 'Share Phone Number',
-          },
-          {
-            type: 'cancel',
-            text: 'Cancel',
-          },
-        ],
-      }, (buttonId: string) => {
-        if (buttonId === 'request_phone') {
-          // Phone will be sent via initData
-          const handler = () => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const contact = (window.Telegram?.WebApp.initDataUnsafe as any)?.contact;
-            if (contact) {
-              const user: TelegramUser = {
-                ...telegramUser,
-                phone: contact.phone_number,
-              };
-              setTelegramUser(user);
-              resolve(user);
-            } else {
-              resolve(null);
-            }
-            window.Telegram?.WebApp.offEvent('popupClosed', handler);
+      const tg = window.Telegram.WebApp;
+      
+      console.log('Requesting contact from Telegram...');
+      
+      // Use the direct requestContact method (available in newer Bot API versions)
+      tg.requestContact((success: boolean, response: { status: string; responseUnsafe?: { contact?: { phone_number: string; first_name: string; last_name?: string; user_id: number } } }) => {
+        console.log('Contact request response:', success, response);
+        
+        if (success && response.status === 'sent' && response.responseUnsafe?.contact) {
+          const contact = response.responseUnsafe.contact;
+          
+          const user: TelegramUser = {
+            ...telegramUser,
+            id: contact.user_id,
+            firstName: contact.first_name,
+            lastName: contact.last_name,
+            phone: contact.phone_number,
           };
-          window.Telegram.WebApp.onEvent('popupClosed', handler);
+          setTelegramUser(user);
+          console.log('Contact received successfully:', user);
+          resolve(user);
+        } else if (response.status === 'cancelled') {
+          console.log('User cancelled contact request');
+          resolve(null);
         } else {
+          console.warn('Contact request failed or cancelled');
           resolve(null);
         }
       });

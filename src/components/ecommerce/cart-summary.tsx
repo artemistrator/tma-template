@@ -46,9 +46,8 @@ export function CartSummary({
   const showDiscount = props?.showDiscount ?? directShowDiscount;
   const showTotal = props?.showTotal ?? directShowTotal;
   const promoCodeEnabled = props?.promoCodeEnabled ?? directPromoCodeEnabled;
-  const checkoutAction = props?.onCheckout ?? onCheckout;
+  const checkoutAction= props?.onCheckout ?? onCheckout;
 
-  const total = useCartStore((state) => state.total);
   const items = useCartStore((state) => state.items);
   const promoCode = useCartStore((state) => state.promoCode);
   const applyPromoCode = useCartStore((state) => state.applyPromoCode);
@@ -57,8 +56,16 @@ export function CartSummary({
   const [promoInput, setPromoInput] = React.useState('');
   const [promoError, setPromoError] = React.useState('');
 
+  // Debug logging
+  React.useEffect(() => {
+  console.log('CartSummary - onCheckout:', checkoutAction);
+  console.log('CartSummary - items.length:', items.length);
+  console.log('CartSummary - should show button:', !!checkoutAction && items.length > 0);
+  }, [checkoutAction, items.length]);
+
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const discount = promoCode ? subtotal * 0.1 : 0; // 10% discount example
+  const total = subtotal - discount;
 
   const handleApplyPromo = () => {
     hapticFeedback.impact('light');
@@ -145,17 +152,18 @@ export function CartSummary({
           </div>
         )}
 
-        {onCheckout && (
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={handleCheckout}
-            disabled={items.length === 0}
-          >
-            Proceed to Checkout
-          </Button>
-        )}
-      </CardContent>
+        {/* Checkout button */}
+        {checkoutAction && (
+         <Button
+         className="w-full mt-4 bg-blue-600 hover:bg-blue-700"
+           size="lg"
+         onClick={handleCheckout}
+           disabled={items.length === 0}
+       >
+         Continue to Payment
+       </Button>
+     )}
+   </CardContent>
     </Card>
   );
 }

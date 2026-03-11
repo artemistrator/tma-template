@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useCartStore } from '@/store/cart-store';
 import { useTelegramContext } from '@/lib/telegram/telegram-provider';
 import Image from 'next/image';
+import { Heart } from 'lucide-react';
 
 export interface ProductCardProps {
   id?: string;
@@ -29,7 +30,9 @@ export interface ProductCardProps {
     description?: string;
     category?: string;
     badge?: string;
+    onClick?: string | (() => void);
   };
+  onNavigate?: (pageId: string) => void;
 }
 
 /**
@@ -48,6 +51,7 @@ export function ProductCard({
   onClick,
   className,
   props,
+  onNavigate,
 }: ProductCardProps) {
   // Support both direct props and props object
   const productId = props?.productId || propProductId;
@@ -61,10 +65,17 @@ export function ProductCard({
   const addItem = useCartStore((state) => state.addItem);
   const { hapticFeedback } = useTelegramContext();
 
+  // Favorites
+  const addToFavorites = useCartStore((state) => state.addToFavorites);
+  const removeFromFavorites = useCartStore((state) => state.removeFromFavorites);
+  const isFavorite = useCartStore((state) => state.isFavorite);
+
+  const favorite = isFavorite(productId);
+
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
     hapticFeedback.impact('light');
-    
+
     addItem({
       id: productId,
       name,
@@ -73,13 +84,38 @@ export function ProductCard({
       description,
       category,
     }, 1);
-    
+
     onAddToCart?.();
   };
 
   const handleClick = () => {
     hapticFeedback.selection();
-    onClick?.();
+    // Check if onClick is a navigate string from props
+    const navigateString = typeof onClick === 'string' ? onClick : props?.onClick;
+    const customHandler = typeof onClick === 'function' ? onClick : undefined;
+    
+    if (typeof navigateString === 'string' && navigateString.startsWith('navigate:')) {
+      const pageId = navigateString.split(':')[1];
+      window.location.hash = `${pageId}?productId=${productId}`;
+      onNavigate?.(pageId);
+    } else if (customHandler) {
+      customHandler();
+    } else {
+      // Default: navigate to product-details
+      window.location.hash = `product-details?productId=${productId}`;
+      onNavigate?.('product-details');
+    }
+  };
+
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    hapticFeedback.impact('light');
+    
+    if (favorite) {
+     removeFromFavorites(productId);
+    } else {
+      addToFavorites(productId);
+    }
   };
 
   const formattedPrice = new Intl.NumberFormat('en-US', {
@@ -109,6 +145,17 @@ export function ProductCard({
               {badge}
             </Badge>
           )}
+          <button
+            onClick={handleFavoriteClick}
+            className="absolute top-2 right-2 p-2 rounded-full bg-background/80 hover:bg-background transition-all"
+          >
+            <Heart
+              className={cn(
+                "w-5 h-5",
+                favorite ? "fill-red-500 text-red-500" : "text-muted-foreground"
+              )}
+            />
+          </button>
         </div>
       )}
       
