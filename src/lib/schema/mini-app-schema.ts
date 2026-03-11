@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+// App type enum - defines the business type
+export const AppTypeSchema = z.enum(['ecommerce', 'booking', 'infobiz']);
+export type AppType = z.infer<typeof AppTypeSchema>;
+
 // Base component props schema
 export const BaseComponentPropsSchema = z.object({
   className: z.string().optional(),
@@ -65,7 +69,7 @@ export const DataModelEntitySchema = z.object({
   })),
 });
 
-// Meta schema
+// Meta schema - now includes multi-tenant fields
 export const MetaSchema = z.object({
   title: z.string(),
   logo: z.string().optional(),
@@ -75,6 +79,10 @@ export const MetaSchema = z.object({
     primaryColor: z.string().optional(),
     secondaryColor: z.string().optional(),
   }).optional(),
+  // Multi-tenant fields
+  appType: AppTypeSchema.default('ecommerce').describe('Type of business: ecommerce, booking, or infobiz'),
+  tenantId: z.string().describe('Unique tenant identifier'),
+  slug: z.string().describe('URL-friendly identifier for the tenant'),
 });
 
 // Flow action schema

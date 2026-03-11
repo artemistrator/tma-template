@@ -9,7 +9,11 @@ export const demoConfig: MiniAppSchemaType = {
     theme: {
       primaryColor: "#007AFF",
       secondaryColor: "#5856D6"
-    }
+    },
+    // Multi-tenant fields
+    appType: 'ecommerce',
+    tenantId: 'demo-tenant',
+    slug: 'demo-shop'
   },
   dataModel: {
     Product: {
