@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { TelegramProvider } from "@/lib/telegram/telegram-provider";
+import { AppConfigProvider } from '@/context/app-config-context';
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -33,9 +34,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <TelegramProvider>
-          {children}
-        </TelegramProvider>
+        <AppConfigProvider initialTenantId="demo-tenant">
+          <TelegramProvider>
+            {children}
+          </TelegramProvider>
+        </AppConfigProvider>
       </body>
     </html>
   );

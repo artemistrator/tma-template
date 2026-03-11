@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import { PageRenderer } from '@/lib/renderer/page-renderer';
 import { MiniAppSchemaType, validateMiniAppSchema } from '@/lib/schema/mini-app-schema';
 import { initializeComponents } from '@/components';
-import { demoConfig } from '@/config/demo';
+import { useAppConfig, ConfigLoading, ConfigError } from '@/context/app-config-context';
 import { useCartItemCount } from '@/store/cart-store';
 
 // Force dynamic rendering to avoid SSR issues with window object
 export const dynamic = 'force-dynamic';
 
 export default function Home() {
+  const { config: contextConfig, loading, error, reloadConfig } = useAppConfig();
   const [schema, setSchema] = useState<MiniAppSchemaType | null>(null);
   const [currentPageId, setCurrentPageId] = useState('home');
   const [isMounted, setIsMounted] = useState(false);
@@ -23,14 +24,16 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // Validate and load schema
-    const result = validateMiniAppSchema(demoConfig);
-    if (result.success) {
-      setSchema(result.data as MiniAppSchemaType);
-    } else {
-      console.error('Schema validation failed:', result.error);
+    // Validate and load schema from context
+    if (contextConfig) {
+      const result = validateMiniAppSchema(contextConfig);
+      if (result.success) {
+        setSchema(result.data as MiniAppSchemaType);
+      } else {
+        console.error('Schema validation failed:', result.error);
+      }
     }
-  }, []);
+  }, [contextConfig]);
 
   // Handle navigation from URL hash
   useEffect(() => {
@@ -57,6 +60,16 @@ export default function Home() {
     setCurrentPageId(pageId);
     window.location.hash = pageId;
   };
+
+  // Show loading state
+  if (loading) {
+    return <ConfigLoading />;
+  }
+
+  // Show error state
+  if (error) {
+    return <ConfigError error={error} onRetry={reloadConfig} />;
+  }
 
   if (!isMounted || !schema) {
     return (
