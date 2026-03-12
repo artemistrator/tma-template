@@ -395,12 +395,76 @@ docker-compose down
 
 ### Directus Setup Steps
 
-After first login:
+#### 1. Start Directus
 
-1. **Create Collections** (e.g., `products`, `orders`, `tenants`)
-2. **Set Permissions** for public access
-3. **Create API Token** (Settings -> API -> Admin Access Token)
-4. **Add your data** (products, configurations, etc.)
+```bash
+docker-compose up -d directus postgres
+```
+
+#### 2. Initialize Database Collections
+
+Run the setup script to create collections automatically:
+
+```bash
+# Install dependencies (if not already installed)
+npm install
+
+# Run database setup script
+npm run setup:db
+```
+
+This script will:
+- Authenticate with Directus using admin credentials
+- Create `tenants` collection (for multi-tenant config)
+- Create `products` collection (with tenant isolation)
+- Create `orders` collection (with tenant isolation)
+
+**Script output:**
+```
+╔═══════════════════════════════════════════════════════════╗
+║       Directus Database Setup Script                      ║
+╚═══════════════════════════════════════════════════════════╝
+
+🔐 Authenticating with Directus...
+✅ Authentication successful!
+
+📋 Creating collections...
+
+📁 Creating collection "tenants"...
+   ✅ Collection "tenants" created
+   ✅ Field "id" added
+   ✅ Field "name" added
+   ...
+
+✅ Database setup complete!
+```
+
+#### 3. Access Directus Admin Panel
+
+1. Open http://localhost:8055
+2. Login with:
+   - **Email:** `admin@example.com`
+   - **Password:** `admin`
+
+#### 4. Configure Permissions (Important!)
+
+By default, collections are private. To allow public access:
+
+1. Go to **Settings** → **Roles & Permissions**
+2. Select **Public** role
+3. For each collection (`tenants`, `products`, `orders`):
+   - Enable **Read** permission
+   - Set **Field Permissions** for fields you want to expose
+4. Save changes
+
+#### 5. Add Sample Data
+
+1. Go to **Content** → **Products**
+2. Click **Create Item**
+3. Fill in product details
+4. Set `tenant_id` to match your tenant slug (e.g., `pizza`, `barber`)
+5. Set **Status** to `published`
+6. Save
 
 ### Environment Variables
 
