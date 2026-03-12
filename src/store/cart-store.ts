@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 export interface Product {
   id: string;
@@ -49,7 +49,7 @@ interface CartState {
   total: number;
   orders: Order[];
   favorites: string[]; // product IDs
-  
+
   // Actions
   addItem: (product: Product, quantity?: number) => void;
   removeItem: (productId: string) => void;
@@ -60,16 +60,38 @@ interface CartState {
   applyPromoCode: (code: string) => void;
   calculateTotal: () => number;
   getItemCount: () => number;
-  
+
   // Order actions
   addOrder: (order: Order) => void;
   getOrders: () => Order[];
-  
+
   // Favorites
   addToFavorites: (productId: string) => void;
   removeFromFavorites: (productId: string) => void;
   isFavorite: (productId: string) => boolean;
 }
+
+// Create storage with tenant-aware key
+const createTenantStorage = () => {
+  return {
+    getItem: (name: string) => {
+      if (typeof window === 'undefined') return null;
+      const tenantId = window.location.search.match(/[?&]tenant=([^&]+)/)?.[1] || 'default';
+      const stored = localStorage.getItem(`${name}_${tenantId}`);
+      return stored ? JSON.parse(stored) : null;
+    },
+    setItem: (name: string, value: unknown) => {
+      if (typeof window === 'undefined') return;
+      const tenantId = window.location.search.match(/[?&]tenant=([^&]+)/)?.[1] || 'default';
+      localStorage.setItem(`${name}_${tenantId}`, JSON.stringify(value));
+    },
+    removeItem: (name: string) => {
+      if (typeof window === 'undefined') return;
+      const tenantId = window.location.search.match(/[?&]tenant=([^&]+)/)?.[1] || 'default';
+      localStorage.removeItem(`${name}_${tenantId}`);
+    },
+  };
+};
 
 export const useCartStore = create<CartState>()(
   persist(
@@ -196,7 +218,8 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'cart-storage',
-      partialize: (state) => ({ 
+      storage: createJSONStorage(() => createTenantStorage()),
+      partialize: (state) => ({
         items: state.items,
         promoCode: state.promoCode,
         shippingAddress: state.shippingAddress,
