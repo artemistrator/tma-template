@@ -70,6 +70,12 @@ export function AppConfigProvider({ children, defaultTenantSlug = 'pizza' }: App
       if (tenantId && data.tenantId !== tenantId) {
         console.log('[AppConfigProvider] Tenant changed, clearing cart');
         clearCart();
+        // Also clear all cart-related localStorage for this tenant
+        if (typeof window !== 'undefined') {
+          const keys = Object.keys(localStorage).filter(k => k.includes('cart'));
+          keys.forEach(k => localStorage.removeItem(k));
+          console.log('[AppConfigProvider] Cleared cart localStorage');
+        }
       }
 
       setConfig(data.config);
