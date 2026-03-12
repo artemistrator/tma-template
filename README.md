@@ -457,14 +457,72 @@ By default, collections are private. To allow public access:
    - Set **Field Permissions** for fields you want to expose
 4. Save changes
 
-#### 5. Add Sample Data
+#### 5. Seed Demo Data
 
-1. Go to **Content** → **Products**
-2. Click **Create Item**
-3. Fill in product details
-4. Set `tenant_id` to match your tenant slug (e.g., `pizza`, `barber`)
-5. Set **Status** to `published`
-6. Save
+Instead of manually adding data, run the seed script to populate the database:
+
+```bash
+# Seed database with demo data
+npm run seed:db
+```
+
+**What this creates:**
+
+**Tenants:**
+- Mario Pizza (slug: `pizza`, theme: red/teal)
+- Blade & Fade Barbershop (slug: `barber`, theme: dark)
+
+**Products for Mario Pizza:**
+- Margherita Pizza - $12.99
+- Pepperoni Pizza - $14.99
+- Quattro Formaggi - $16.99
+- Vegetariana Pizza - $13.99
+- Caesar Salad - $9.99
+- Pasta Carbonara - $13.99
+
+**Services for Blade & Fade:**
+- Classic Haircut - $35.00
+- Beard Trim & Style - $20.00
+- Full Service - $50.00
+- Kids Haircut - $25.00
+- Hot Towel Shave - $30.00
+
+**Script output:**
+```
+╔═══════════════════════════════════════════════════════════╗
+║       Directus Database Seed Script                       ║
+╚═══════════════════════════════════════════════════════════╝
+
+🔐 Authenticating with Directus...
+✅ Authentication successful!
+
+🏢 Creating tenants...
+
+🏢 Creating tenant "Mario Pizza" (pizza)...
+   ✅ Tenant "Mario Pizza" created
+
+🍕 Creating products for Mario Pizza...
+
+📦 Creating product "Margherita Pizza" ($12.99)...
+   ✅ Product "Margherita Pizza" created for tenant "pizza"
+...
+
+✅ Database seeding complete!
+
+📊 Summary:
+   Tenants created: 2
+   Pizza products: 6
+   Barber products: 5
+   Total products: 11
+```
+
+**Note:** The script is idempotent - running it multiple times won't create duplicates.
+
+#### 6. View Data in Directus
+
+1. Go to **Content** → **Tenants** to see the 2 tenants
+2. Go to **Content** → **Products** to see all products
+3. Filter products by `tenant_id` to see items for specific tenant
 
 ### Environment Variables
 
