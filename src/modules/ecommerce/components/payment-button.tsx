@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useCartStore } from '@/store/cart-store';
 import { useTelegramContext } from '@/lib/telegram/telegram-provider';
+import { useAppConfig } from '@/context/app-config-context';
 import { Loader2 } from 'lucide-react';
 
 interface PaymentButtonProps {
@@ -20,14 +21,13 @@ interface PaymentButtonProps {
   props?: {
     text?: string;
     variant?: 'default' | 'telegram' | 'outline';
-   onPaymentSuccess?: string;
+    onPaymentSuccess?: string;
   };
   onNavigate?: (pageId: string) => void;
 }
 
 /**
- * PaymentButton - Telegram Payment integration button
- * Uses Telegram's native payment system when available
+ * PaymentButton - Creates order via API
  */
 export function PaymentButton({
   id,
@@ -47,10 +47,12 @@ export function PaymentButton({
   const shippingAddress = useCartStore((state) => state.shippingAddress);
   const items = useCartStore((state) => state.items);
   const clearCart = useCartStore((state) => state.clearCart);
-  const addOrder= useCartStore((state) => state.addOrder);
-  const { isTelegram, showAlert, hapticFeedback } = useTelegramContext();
+  const addOrder = useCartStore((state) => state.addOrder);
+  const { showAlert, hapticFeedback } = useTelegramContext();
+  const { config } = useAppConfig();
+  
+  const tenantId = config?.meta.tenantId || 'default';
 
-  // Support both direct props and nested props from schema
   const text = props?.text ?? directText;
   const paymentAmount = amount ?? total;
   const successCallback = props?.onPaymentSuccess ?? onPaymentSuccess;
@@ -58,183 +60,106 @@ export function PaymentButton({
   const handlePayment = async () => {
     if (!shippingAddress) {
       hapticFeedback.error();
-     showAlert('Please enter shipping address first');
-     return;
+      showAlert('Please enter shipping address first');
+      return;
     }
 
     if (items.length === 0) {
       hapticFeedback.error();
-     showAlert('Your cart is empty');
-     return;
+      showAlert('Your cart is empty');
+      return;
     }
 
     setIsProcessing(true);
     hapticFeedback.impact('medium');
 
     try {
-      if (isTelegram) {
-        // Use Telegram's native payment
-        await handleTelegramPayment();
-      } else {
-        // Fallback to web payment (implement your own logic)
-        await handleWebPayment();
-      }
+      await handleCreateOrder();
     } catch (error) {
       hapticFeedback.error();
-     onPaymentError?.(error as Error);
+      onPaymentError?.(error as Error);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleTelegramPayment = async () => {
-   return new Promise<void>(async (resolve, reject) => {
-      // Check if Telegram WebApp is available
-     type TelegramWebApp = {
-       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-       sendInvoice: (invoiceData: any, callback: (success: boolean) => void) => void;
-     };
-     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-     const WebApp = (window as unknown as { Telegram?: { WebApp?: TelegramWebApp } }).Telegram?.WebApp;
-      
-      if (!WebApp) {
-        // Fallback if not in Telegram
-       console.warn('Telegram WebApp not available, using fallback');
-        try {
-          await handleWebPayment();
-         resolve();
-        } catch (error) {
-         reject(error);
-        }
-       return;
-      }
+  const handleCreateOrder = async () => {
+    if (!shippingAddress) {
+      throw new Error('Shipping address is required');
+    }
 
-      // Use Telegram invoice
-     const invoiceData = {
-       title: 'Order Payment',
-        description: `Order #${Date.now().toString().slice(-6)}`,
-        payload: JSON.stringify({
-          items: items.map(i => ({ id: i.id, name: i.name, quantity: i.quantity })),
-        }),
-        provider_token: '', // Empty for test mode
-        currency: 'USD',
-        prices: items.map(item => ({
-         label: item.name,
-          amount: Math.round(item.price * 100), // Convert to cents
-        })),
-      };
+    const orderData = {
+      tenantId,
+      customerName: shippingAddress.name,
+      phone: shippingAddress.phone,
+      items: items.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+      })),
+      total: paymentAmount,
+      address: {
+        address: shippingAddress.address,
+        city: shippingAddress.city,
+        zipCode: shippingAddress.zipCode,
+        country: shippingAddress.country,
+      },
+    };
 
-      // Send invoice
-      WebApp.sendInvoice(invoiceData, async (success: boolean) => {
-        if (success) {
-         const orderId = `ORD-${Date.now().toString().slice(-6)}`;
+    console.log('[PaymentButton] Creating order:', orderData);
 
-          addOrder({
-           id: orderId,
-            items: [...items],
-           total: paymentAmount,
-           shippingAddress: shippingAddress!,
-           status: 'confirmed',
-            createdAt: new Date().toISOString(),
-          });
-
-          hapticFeedback.success();
-          clearCart();
-
-          // Send Telegram notification to admin
-          try {
-            await fetch('/api/notify-admin', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                order: {
-                  id: orderId,
-                  total: paymentAmount,
-                  items: items,
-                  status: 'confirmed',
-                },
-                customer: {
-                  id: shippingAddress?.name, // Will be updated from Telegram user
-                  firstName: shippingAddress?.name?.split(' ')[0],
-                  lastName: shippingAddress?.name?.split(' ')[1],
-                  username: '',
-                  phone: shippingAddress?.phone,
-                  address: shippingAddress?.address,
-                  city: shippingAddress?.city,
-                  zipCode: shippingAddress?.zipCode,
-                  country: shippingAddress?.country,
-                },
-              }),
-            });
-           console.log('Telegram notification sent for order:', orderId);
-          } catch (error) {
-           console.error('Failed to send Telegram notification:', error);
-          }
-
-          if (typeof successCallback === 'string' && successCallback.startsWith('navigate:')) {
-           const targetPage = successCallback.split(':')[1];
-           onNavigate?.(targetPage);
-          } else if (typeof successCallback === 'function') {
-            successCallback(orderId);
-          }
-
-         resolve();
-        } else {
-          hapticFeedback.error();
-         reject(new Error('Payment cancelled'));
-        }
-      });
+    const response = await fetch('/api/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderData),
     });
-  };
 
-  const handleWebPayment = async () => {
-    /**
-     * TODO: Integrate payment gateway (Stripe, PayPal, etc.)
-     */
+    const result = await response.json();
 
-   return new Promise<void>((resolve) => {
-      setTimeout(() => {
-       const orderId = `ORD-${Date.now().toString().slice(-6)}`;
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Failed to create order');
+    }
 
-        // Create order in store
-        addOrder({
-         id: orderId,
-          items: [...items],
-         total: paymentAmount,
-         shippingAddress: shippingAddress!,
-         status: 'confirmed',
-          createdAt: new Date().toISOString(),
-        });
+    console.log('[PaymentButton] Order created:', result.orderId);
 
-        hapticFeedback.success();
-        clearCart();
-        
-        // Handle navigation string like "navigate:order-success"
-        if (typeof successCallback === 'string' && successCallback.startsWith('navigate:')) {
-         const targetPage = successCallback.split(':')[1];
-         onNavigate?.(targetPage);
-        } else if (typeof successCallback === 'function') {
-          successCallback(orderId);
-        }
-        
-       resolve();
-      }, 1500);
+    // Save order locally
+    addOrder({
+      id: result.orderId,
+      items: [...items],
+      total: paymentAmount,
+      shippingAddress: shippingAddress,
+      status: 'confirmed',
+      createdAt: new Date().toISOString(),
     });
+
+    hapticFeedback.success();
+    clearCart();
+
+    // Navigate to success page
+    if (typeof successCallback === 'string' && successCallback.startsWith('navigate:')) {
+      const targetPage = successCallback.split(':')[1];
+      onNavigate?.(targetPage);
+    } else if (typeof successCallback === 'function') {
+      successCallback(result.orderId);
+    }
   };
 
   const formattedAmount = new Intl.NumberFormat('en-US', {
-   style: 'currency',
+    style: 'currency',
     currency,
   }).format(paymentAmount);
 
   const buttonVariant = variant === 'outline' ? 'outline' : 'default';
 
- return (
+  return (
     <Button
-     id={id}
+      id={id}
       className={cn("w-full h-12 text-base font-semibold", className)}
       variant={buttonVariant}
-     onClick={handlePayment}
+      onClick={handlePayment}
       disabled={disabled || isProcessing || items.length === 0}
     >
       {isProcessing ? (
@@ -280,7 +205,7 @@ export function PaymentStatus({
     }
   }, [success, hapticFeedback]);
 
- return (
+  return (
     <div className={cn("text-center py-8", className)}>
       <div
         className={cn(
@@ -298,23 +223,23 @@ export function PaymentStatus({
           </svg>
         )}
       </div>
-      
+
       <h2 className="text-2xl font-bold mb-2">
         {success ? 'Payment Successful!' : 'Payment Failed'}
       </h2>
-      
+
       {paymentId && (
         <p className="text-muted-foreground mb-2">
           Order ID: {paymentId}
         </p>
       )}
-      
+
       {amount && (
         <p className="text-lg font-semibold mb-4">
           Amount: ${amount.toFixed(2)}
         </p>
       )}
-      
+
       {onContinue && (
         <Button onClick={onContinue} className="mt-4">
           {success ? 'Continue Shopping' : 'Try Again'}
