@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { MiniAppSchemaType } from '@/lib/schema/mini-app-schema';
+import { useCartStore } from '@/store/cart-store';
 
 interface AppConfigContextValue {
   config: MiniAppSchemaType | null;
@@ -35,6 +36,8 @@ export function AppConfigProvider({ children, defaultTenantSlug = 'pizza' }: App
   const [error, setError] = useState<Error | null>(null);
   const [tenantSlug, setTenantSlug] = useState(defaultTenantSlug);
   const [tenantId, setTenantId] = useState('');
+  
+  const clearCart = useCartStore((state) => state.clearCart);
 
   const loadConfig = useCallback(async (slug: string) => {
     setLoading(true);
@@ -63,6 +66,12 @@ export function AppConfigProvider({ children, defaultTenantSlug = 'pizza' }: App
         appType: data.config.meta.appType,
       });
 
+      // Clear cart when switching tenants
+      if (tenantId && data.tenantId !== tenantId) {
+        console.log('[AppConfigProvider] Tenant changed, clearing cart');
+        clearCart();
+      }
+
       setConfig(data.config);
       setTenantSlug(data.tenantSlug);
       setTenantId(data.tenantId);
@@ -72,7 +81,7 @@ export function AppConfigProvider({ children, defaultTenantSlug = 'pizza' }: App
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [tenantId, clearCart]);
 
   const reloadConfig = useCallback(async () => {
     await loadConfig(tenantSlug);
@@ -85,6 +94,20 @@ export function AppConfigProvider({ children, defaultTenantSlug = 'pizza' }: App
     console.log('[AppConfigProvider] Initial tenant slug:', slug, '(from URL:', urlSlug, ')');
     loadConfig(slug);
   }, [defaultTenantSlug, loadConfig]);
+
+  // Listen for hash changes to detect tenant switches
+  useEffect(() => {
+    const handleHashChange = () => {
+      const urlSlug = getTenantSlugFromUrl();
+      if (urlSlug && urlSlug !== tenantSlug) {
+        console.log('[AppConfigProvider] Tenant changed via URL:', urlSlug);
+        loadConfig(urlSlug);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [tenantSlug, loadConfig]);
 
   const value: AppConfigContextValue = {
     config,
