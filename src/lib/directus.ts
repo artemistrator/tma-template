@@ -57,6 +57,31 @@ export interface Order {
   created_at?: string;
 }
 
+export interface Service {
+  id: number | string;
+  name: string;
+  price: number;
+  duration?: number;
+  description?: string | null;
+  category?: string | null;
+  status: 'active' | 'inactive';
+  tenant_id: string;
+  created_at?: string;
+}
+
+export interface Booking {
+  id: number | string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email?: string | null;
+  date: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  service_id: string;
+  tenant_id: string;
+  notes?: string | null;
+  created_at?: string;
+}
+
 /**
  * Get tenant by slug
  */
@@ -119,6 +144,42 @@ export async function getOrdersByTenant(tenantId: string): Promise<Order[]> {
     )) as Order[];
   } catch (error) {
     console.error('Error fetching orders:', error);
+    return [];
+  }
+}
+
+/**
+ * Get services by tenant_id
+ */
+export async function getServicesByTenant(tenantId: string): Promise<Service[]> {
+  try {
+    return (await directus.request(
+      readItems('services', {
+        filter: { 
+          tenant_id: { _eq: tenantId },
+          status: { _eq: 'active' },
+        },
+      })
+    )) as Service[];
+  } catch (error) {
+    console.error('Error fetching services:', error);
+    return [];
+  }
+}
+
+/**
+ * Get bookings by tenant_id
+ */
+export async function getBookingsByTenant(tenantId: string): Promise<Booking[]> {
+  try {
+    return (await directus.request(
+      readItems('bookings', {
+        filter: { tenant_id: { _eq: tenantId } },
+        sort: ['-date'],
+      })
+    )) as Booking[];
+  } catch (error) {
+    console.error('Error fetching bookings:', error);
     return [];
   }
 }

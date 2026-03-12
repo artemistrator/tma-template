@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTenantBySlug, getProductsByTenant } from '@/lib/directus';
+import { getTenantBySlug, getProductsByTenant, getServicesByTenant } from '@/lib/directus';
 import { validateMiniAppSchema, type MiniAppSchemaType } from '@/lib/schema/mini-app-schema';
 
 /**
@@ -39,12 +39,15 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Config API] Tenant found: ${tenant.name}`);
 
-    // Fetch products from Directus
+    // Fetch products or services based on business type
+    const isBooking = tenant.config?.businessType === 'booking';
     const products = await getProductsByTenant(tenant.slug);
-    console.log(`[Config API] Products found: ${products.length}`);
+    const services = isBooking ? await getServicesByTenant(tenant.slug) : [];
+    
+    console.log(`[Config API] Products: ${products.length}, Services: ${services.length}`);
 
     // Build config from Directus data
-    const config: MiniAppSchemaType = buildConfigFromDirectus(tenant, products);
+    const config: MiniAppSchemaType = buildConfigFromDirectus(tenant, products, services);
 
     // Validate config before returning
     const validation = validateMiniAppSchema(config);
@@ -88,7 +91,7 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Build MiniAppSchemaType config from Directus tenant and products data
+ * Build MiniAppSchemaType config from Directus tenant, products and services data
  */
 function buildConfigFromDirectus(tenant: {
   id: number | string;
@@ -111,20 +114,39 @@ function buildConfigFromDirectus(tenant: {
   image?: string | null;
   category?: string | null;
   status: string;
+}>, services: Array<{
+  id: number | string;
+  name: string;
+  price: number;
+  duration?: number;
+  description?: string | null;
+  category?: string | null;
+  status: string;
 }>): MiniAppSchemaType {
-  // Map Directus products to our ProductCard format
-  const productData = products.map(p => ({
-    id: String(p.id),
-    name: p.name,
-    price: p.price,
-    description: p.description,
-    image: p.image,
-    category: p.category,
-    badge: p.status === 'published' ? undefined : p.status,
-  }));
+  // Map Directus products/services to display format
+  const isBooking = tenant.config?.businessType === 'booking';
+  const items = isBooking 
+    ? services.map(s => ({
+        id: String(s.id),
+        name: s.name,
+        price: s.price,
+        description: s.description,
+        category: s.category,
+        duration: s.duration,
+        badge: s.status === 'active' ? undefined : s.status,
+      }))
+    : products.map(p => ({
+        id: String(p.id),
+        name: p.name,
+        price: p.price,
+        description: p.description,
+        image: p.image,
+        category: p.category,
+        badge: p.status === 'published' ? undefined : p.status,
+      }));
 
   // Build config based on business type
-  const isEcommerce = tenant.config?.businessType === 'ecommerce';
+  const isEcommerce = !isBooking;
   
   return {
     meta: {
@@ -167,7 +189,7 @@ function buildConfigFromDirectus(tenant: {
               description: isEcommerce ? 'Our best sellers' : 'Choose your service',
               columns: 2,
               limit: 6,
-              data: productData.slice(0, 6),
+              data: items.slice(0, 6),
             },
           },
         ],
@@ -183,7 +205,7 @@ function buildConfigFromDirectus(tenant: {
             props: {
               title: isEcommerce ? 'All Products' : 'All Services',
               columns: 2,
-              data: productData,
+              data: items,
             },
           },
         ],

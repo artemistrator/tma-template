@@ -59,7 +59,7 @@ async function main() {
     config: { theme: { primaryColor: '#1a1a2e', secondaryColor: '#16213e' }, businessType: 'booking' },
   }, 'slug', 'Blade & Fade');
   
-  // Seed products
+  // Seed products (for pizza)
   console.log('\n🍕 Creating products...\n');
   const products = [
     { name: 'Margherita Pizza', price: 12.99, description: 'Classic Italian pizza', category: 'Pizza', status: 'published', tenant_id: 'pizza' },
@@ -72,21 +72,24 @@ async function main() {
     await seedItem(api, 'products', p, 'name', p.name);
   }
   
+  // Seed services (for barber)
   console.log('\n✂️  Creating barber services...\n');
   const services = [
-    { name: 'Classic Haircut', price: 35.00, description: 'Precision haircut', category: 'Haircut', status: 'published', tenant_id: 'barber' },
-    { name: 'Beard Trim', price: 20.00, description: 'Beard shaping', category: 'Beard', status: 'published', tenant_id: 'barber' },
-    { name: 'Full Service', price: 50.00, description: 'Haircut + beard trim', category: 'Combo', status: 'published', tenant_id: 'barber' },
+    { name: 'Classic Haircut', price: 35.00, duration: 45, description: 'Precision haircut with wash and styling', category: 'Haircut', status: 'active', tenant_id: 'barber' },
+    { name: 'Beard Trim', price: 20.00, duration: 30, description: 'Professional beard shaping and trim', category: 'Beard', status: 'active', tenant_id: 'barber' },
+    { name: 'Full Service', price: 50.00, duration: 75, description: 'Haircut + beard trim + hot towel treatment', category: 'Combo', status: 'active', tenant_id: 'barber' },
+    { name: 'Hot Towel Shave', price: 30.00, duration: 45, description: 'Traditional straight razor shave', category: 'Shave', status: 'active', tenant_id: 'barber' },
   ];
   
   for (const s of services) {
-    await seedItem(api, 'products', s, 'name', s.name);
+    await seedItem(api, 'services', s, 'name', s.name);
   }
   
   console.log('\n✅ Database seeding complete!');
   console.log('\n📊 Summary:');
   console.log('   Tenants: 2 (pizza, barber)');
-  console.log('   Products: 7 (4 pizza + 3 barber)');
+  console.log('   Products: 4 (pizza tenant)');
+  console.log('   Services: 4 (barber tenant)');
 }
 
 main().catch(e => {
