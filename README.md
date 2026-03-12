@@ -26,7 +26,8 @@ A production-ready template for building Telegram Mini Apps (TMA) with dynamic c
 | Validation | Zod 4 |
 | Testing | Jest 30 + React Testing Library |
 | Deployment | Vercel / Docker / Docker Compose |
-| Database | Directus (planned) / Supabase (planned) |
+| Database | Directus (PostgreSQL) |
+| CMS | Directus (Headless CMS) |
 | Telegram | @types/telegram-web-app 9.1 |
 
 ## 🏁 Quick Start
@@ -363,6 +364,80 @@ src/
 ```
 
 See `TELEGRAM_SETUP.md` for Telegram integration details.
+
+## 🔧 Backend Setup (Directus + PostgreSQL)
+
+The platform includes a local backend using Directus (Headless CMS) and PostgreSQL.
+
+### Prerequisites
+
+- Docker & Docker Compose installed
+
+### Start Backend Services
+
+```bash
+# Start Directus and PostgreSQL
+docker-compose up -d directus postgres
+
+# View logs
+docker-compose logs -f directus
+
+# Stop services
+docker-compose down
+```
+
+### Access Directus Admin Panel
+
+1. Open http://localhost:8055
+2. Login with:
+   - **Email:** `admin@example.com`
+   - **Password:** `admin`
+
+### Directus Setup Steps
+
+After first login:
+
+1. **Create Collections** (e.g., `products`, `orders`, `tenants`)
+2. **Set Permissions** for public access
+3. **Create API Token** (Settings -> API -> Admin Access Token)
+4. **Add your data** (products, configurations, etc.)
+
+### Environment Variables
+
+Copy `.env.local.example` to `.env.local`:
+
+```bash
+cp .env.local.example .env.local
+```
+
+Fill in your Directus token:
+
+```bash
+DIRECTUS_URL=http://localhost:8055
+DIRECTUS_ADMIN_TOKEN=your-token-here
+```
+
+### Database Access
+
+PostgreSQL is available on `localhost:5432`:
+- **Host:** localhost
+- **Port:** 5432
+- **Database:** directus
+- **User:** directus
+- **Password:** directus_password
+
+### Data Persistence
+
+All data is stored in Docker volumes:
+- `postgres_data` - PostgreSQL database
+- `directus_uploads` - Uploaded files
+- `directus_extensions` - Directus extensions
+
+To reset all data:
+
+```bash
+docker-compose down -v  # WARNING: Deletes all data!
+```
 
 ## 🧪 Testing
 
