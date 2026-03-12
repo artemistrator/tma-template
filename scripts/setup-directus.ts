@@ -15,11 +15,11 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 // Load environment variables
-const envPath = join(process.cwd(), '.env.local');
+const envPath = join(__dirname, '..', '.env.local');
 console.log('Loading environment from:', envPath);
 
 try {
-  dotenv.config({ path: envPath });
+  dotenv.config({ path: envPath, override: true });
 } catch (error) {
   console.warn('Could not load .env.local, using environment variables');
 }
@@ -32,23 +32,8 @@ const ADMIN_PASSWORD = process.env.DIRECTUS_ADMIN_PASSWORD || 'admin';
 console.log('Directus URL:', DIRECTUS_URL);
 console.log('Admin Email:', ADMIN_EMAIL);
 
-// Axios instance for Directus API
-let accessToken = '';
-
-const directusApi = axios.create({
-  baseURL: DIRECTUS_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add auth token to requests
-directusApi.interceptors.request.use((config) => {
-  if (accessToken) {
-    config.headers.Authorization = `Bearer ${accessToken}`;
-  }
-  return config;
-});
+// Axios instance for Directus API (will be set after authentication)
+let directusApi: ReturnType<typeof axios.create>;
 
 /**
  * Authenticate with Directus and get access token
@@ -57,16 +42,28 @@ async function authenticate(): Promise<string> {
   console.log('\n🔐 Authenticating with Directus...');
   
   try {
-    const response = await directusApi.post('/auth/login', {
+    const response = await axios.post(`${DIRECTUS_URL}/auth/login`, {
       email: ADMIN_EMAIL,
       password: ADMIN_PASSWORD,
     });
 
-    accessToken = response.data.data.access_token;
+    const token = response.data.data.access_token;
     console.log('✅ Authentication successful!');
     console.log('   Token expires in:', response.data.data.expires / 60, 'minutes');
     
-    return accessToken;
+    // Create API instance with token AFTER authentication
+    directusApi = axios.create({
+      baseURL: DIRECTUS_URL,
+    });
+    
+    // Set headers explicitly
+    directusApi.defaults.headers.common['Content-Type'] = 'application/json';
+    directusApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    
+    console.log('   API instance created with token');
+    console.log('   API headers:', directusApi.defaults.headers.common);
+    
+    return token;
   } catch (error: any) {
     console.error('❌ Authentication failed:', error.response?.data?.message || error.message);
     console.error('   Please check your DIRECTUS_ADMIN_EMAIL and DIRECTUS_ADMIN_PASSWORD');
@@ -79,12 +76,15 @@ async function authenticate(): Promise<string> {
  */
 async function collectionExists(collectionId: string): Promise<boolean> {
   try {
-    await directusApi.get(`/collections/${collectionId}`);
+    const response = await directusApi.get(`/collections/${collectionId}`);
+    console.log(`   ✓ Collection "${collectionId}" exists`);
     return true;
   } catch (error: any) {
-    if (error.response?.status === 404) {
+    // Directus returns 403 instead of 404 for non-existent collections (security feature)
+    if (error.response?.status === 404 || error.response?.status === 403) {
       return false;
     }
+    console.warn(`   Warning: Could not check collection "${collectionId}":`, error.response?.status);
     throw error;
   }
 }
@@ -167,6 +167,9 @@ async function createCollection(collection: {
 
   } catch (error: any) {
     console.error(`❌ Failed to create collection "${collectionId}":`, error.response?.data?.message || error.message);
+    console.error('Full error:', JSON.stringify(error.response?.data, null, 2));
+    console.error('Status:', error.response?.status);
+    console.error('Headers:', error.response?.headers);
     throw error;
   }
 }

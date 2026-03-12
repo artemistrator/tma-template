@@ -11,7 +11,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "setup:db": "tsx scripts/setup-directus.ts",
-    "seed:db": "tsx scripts/seed-data.ts"
+    "seed:db": "tsx scripts/seed-data-simple.ts",
+    "seed:db:full": "tsx scripts/recreate-collections.ts && tsx scripts/seed-data-simple.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -32,6 +33,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@directus/sdk": "^21.2.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/jest": "^30.0.0",
