@@ -46,7 +46,14 @@ export function CartSummary({
   const showDiscount = props?.showDiscount ?? directShowDiscount;
   const showTotal = props?.showTotal ?? directShowTotal;
   const promoCodeEnabled = props?.promoCodeEnabled ?? directPromoCodeEnabled;
-  const checkoutAction= props?.onCheckout ?? onCheckout;
+  const checkoutAction = props?.onCheckout ?? onCheckout;
+
+  console.log('[CartSummary] Received props:', {
+    props,
+    onCheckout,
+    checkoutAction,
+    directPromoCodeEnabled,
+  });
 
   const items = useCartStore((state) => state.items);
   const promoCode = useCartStore((state) => state.promoCode);
@@ -82,13 +89,20 @@ export function CartSummary({
 
   const handleCheckout = () => {
     hapticFeedback.impact('medium');
+    console.log('[CartSummary] Checkout clicked!', { checkoutAction, items: items.length });
 
     // Handle navigation string like "navigate:checkout"
     if (typeof checkoutAction === 'string' && checkoutAction.startsWith('navigate:')) {
       const targetPage = checkoutAction.split(':')[1];
+      console.log('[CartSummary] Navigating to:', targetPage);
       onNavigate?.(targetPage);
     }
   };
+
+  const hasItems = items.length > 0;
+  const hasCheckout = !!checkoutAction;
+
+  console.log('[CartSummary] Render:', { hasItems, hasCheckout, showButton: hasCheckout && hasItems });
 
   return (
     <Card className={cn("", className)} id={id}>
@@ -152,18 +166,28 @@ export function CartSummary({
           </div>
         )}
 
-        {/* Checkout button */}
-        {checkoutAction && (
-         <Button
-         className="w-full mt-4 bg-blue-600 hover:bg-blue-700"
-           size="lg"
-         onClick={handleCheckout}
-           disabled={items.length === 0}
-       >
-         Continue to Payment
-       </Button>
-     )}
-   </CardContent>
+        {/* Checkout button - ALWAYS SHOW FOR DEBUGGING */}
+        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
+          <p className="text-sm text-yellow-800 mb-2">
+            Debug: hasItems={String(hasItems)}, hasCheckout={String(hasCheckout)}
+          </p>
+          {hasCheckout && hasItems ? (
+            <Button
+              className="w-full bg-green-600 hover:bg-green-700"
+              size="lg"
+              onClick={handleCheckout}
+            >
+              ✓ Continue to Payment
+            </Button>
+          ) : hasCheckout ? (
+            <Button className="w-full bg-gray-400" size="lg" disabled>
+              Add items to cart
+            </Button>
+          ) : (
+            <p className="text-red-600">ERROR: No checkout action configured!</p>
+          )}
+        </div>
+      </CardContent>
     </Card>
   );
 }
