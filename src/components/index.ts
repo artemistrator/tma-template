@@ -21,6 +21,8 @@ import { SearchBar } from '@/modules/ecommerce/components/search-bar';
 import { FilterPanel } from '@/modules/ecommerce/components/filter-panel';
 import { ServiceList } from '@/modules/booking/components/ServiceList';
 import { BookingCheckoutForm } from '@/modules/booking/components/BookingCheckoutForm';
+import { BookingCalendar } from '@/modules/booking/components/BookingCalendar';
+import { TimeSlots } from '@/modules/booking/components/TimeSlots';
 import type { ComponentFactoryProps } from '@/lib/renderer/component-registry';
 
 /**
