@@ -58,9 +58,9 @@ export function PaymentButton({
   const successCallback = props?.onPaymentSuccess ?? onPaymentSuccess;
 
   const handlePayment = async () => {
-    if (!shippingAddress) {
+    if (!shippingAddress && items.length > 0) {
       hapticFeedback.error();
-      showAlert('Please enter shipping address first');
+      showAlert('Please fill in the form first');
       return;
     }
 
@@ -84,30 +84,28 @@ export function PaymentButton({
   };
 
   const handleCreateOrder = async () => {
-    if (!shippingAddress) {
-      throw new Error('Shipping address is required');
-    }
-
     const orderData = {
       tenantId,
-      customerName: shippingAddress.name,
-      phone: shippingAddress.phone,
+      customerName: shippingAddress?.name || 'Booking Customer',
+      phone: shippingAddress?.phone || '',
       items: items.map(item => ({
         id: item.id,
         name: item.name,
-        price: item.price,
-        quantity: item.quantity,
+        price: Number(item.price),
+        quantity: Number(item.quantity),
       })),
-      total: paymentAmount,
-      address: {
+      total: Number(paymentAmount),
+      address: shippingAddress ? {
         address: shippingAddress.address,
         city: shippingAddress.city,
         zipCode: shippingAddress.zipCode,
         country: shippingAddress.country,
-      },
+      } : {},
     };
 
     console.log('[PaymentButton] Creating order:', orderData);
+    console.log('[PaymentButton] Items:', items);
+    console.log('[PaymentButton] Total:', paymentAmount, 'Type:', typeof paymentAmount);
 
     const response = await fetch('/api/orders', {
       method: 'POST',
@@ -118,6 +116,7 @@ export function PaymentButton({
     });
 
     const result = await response.json();
+    console.log('[PaymentButton] API Response:', result);
 
     if (!response.ok || !result.success) {
       throw new Error(result.error || 'Failed to create order');

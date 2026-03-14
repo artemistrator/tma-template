@@ -1,10 +1,31 @@
-import { createDirectus, rest, readItems } from '@directus/sdk';
+import { createDirectus, rest, readItems, authentication } from '@directus/sdk';
 
 // Get Directus URL from environment
 const DIRECTUS_URL = process.env.NEXT_PUBLIC_DIRECTUS_URL || process.env.DIRECTUS_URL || 'http://localhost:8055';
 
-// Create Directus client
-export const directus = createDirectus(DIRECTUS_URL).with(rest());
+// Get admin credentials
+const DIRECTUS_ADMIN_EMAIL = process.env.DIRECTUS_ADMIN_EMAIL;
+const DIRECTUS_ADMIN_PASSWORD = process.env.DIRECTUS_ADMIN_PASSWORD;
+
+// Create Directus client with authentication if credentials available
+let directus: ReturnType<typeof createDirectus>;
+
+if (DIRECTUS_ADMIN_EMAIL && DIRECTUS_ADMIN_PASSWORD && typeof window === 'undefined') {
+  // Server-side with admin auth
+  directus = createDirectus(DIRECTUS_URL)
+    .with(authentication({ mode: 'json', autoRefresh: true }))
+    .with(rest());
+  
+  // Login
+  (directus as any).login(DIRECTUS_ADMIN_EMAIL, DIRECTUS_ADMIN_PASSWORD)
+    .then(() => console.log('[Directus] Admin logged in'))
+    .catch(e => console.error('[Directus] Login failed:', e));
+} else {
+  // Client-side or no credentials
+  directus = createDirectus(DIRECTUS_URL).with(rest());
+}
+
+export { directus };
 
 // Types for our collections
 export interface Tenant {

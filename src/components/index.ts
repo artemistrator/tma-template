@@ -19,6 +19,8 @@ import { OrderDetails } from '@/modules/ecommerce/components/order-details';
 import { ProductDetails } from '@/modules/ecommerce/components/product-details';
 import { SearchBar } from '@/modules/ecommerce/components/search-bar';
 import { FilterPanel } from '@/modules/ecommerce/components/filter-panel';
+import { ServiceList } from '@/modules/booking/components/ServiceList';
+import { BookingCheckoutForm } from '@/modules/booking/components/BookingCheckoutForm';
 import type { ComponentFactoryProps } from '@/lib/renderer/component-registry';
 
 /**
@@ -48,11 +50,16 @@ export function initializeComponents() {
   registerComponent('SearchBar', SearchBar as unknown as React.ComponentType<ComponentFactoryProps>);
   registerComponent('FilterPanel', FilterPanel as unknown as React.ComponentType<ComponentFactoryProps>);
 
+  // Booking components
+  registerComponent('ServiceList', ServiceList as unknown as React.ComponentType<ComponentFactoryProps>);
+  registerComponent('BookingCheckoutForm', BookingCheckoutForm as unknown as React.ComponentType<ComponentFactoryProps>);
+
   console.log('Components initialized:', [
   'Screen', 'Header', 'Modal', 'BottomNav',
   'ProductCard', 'ProductList', 'PromoSlider',
   'Cart', 'CartSummary', 'CheckoutForm', 'PaymentButton',
-  'OrderSuccess', 'OrderFailed', 'OrdersList', 'OrderDetails', 'ProductDetails', 'SearchBar', 'FilterPanel'
+  'OrderSuccess', 'OrderFailed', 'OrdersList', 'OrderDetails', 'ProductDetails', 'SearchBar', 'FilterPanel',
+  'ServiceList', 'BookingCheckoutForm'
   ]);
 }
 
@@ -77,3 +84,7 @@ export { OrderDetails } from '@/modules/ecommerce/components/order-details';
 export { ProductDetails } from '@/modules/ecommerce/components/product-details';
 export { SearchBar } from '@/modules/ecommerce/components/search-bar';
 export { FilterPanel } from '@/modules/ecommerce/components/filter-panel';
+
+// Booking module exports
+export { ServiceList } from '@/modules/booking/components/ServiceList';
+export { BookingCheckoutForm } from '@/modules/booking/components/BookingCheckoutForm';

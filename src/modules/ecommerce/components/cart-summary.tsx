@@ -58,21 +58,16 @@ export function CartSummary({
   const items = useCartStore((state) => state.items);
   const promoCode = useCartStore((state) => state.promoCode);
   const applyPromoCode = useCartStore((state) => state.applyPromoCode);
+  const totalFromStore = useCartStore((state) => state.total);
   const { hapticFeedback } = useTelegramContext();
 
   const [promoInput, setPromoInput] = React.useState('');
   const [promoError, setPromoError] = React.useState('');
 
-  // Debug logging
-  React.useEffect(() => {
-  console.log('CartSummary - onCheckout:', checkoutAction);
-  console.log('CartSummary - items.length:', items.length);
-  console.log('CartSummary - should show button:', !!checkoutAction && items.length > 0);
-  }, [checkoutAction, items.length]);
-
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discount = promoCode ? subtotal * 0.1 : 0; // 10% discount example
-  const total = subtotal - discount;
+  // Calculate subtotal for display (use Number() to handle strings from Directus)
+  const subtotal = items.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
+  const discount = promoCode ? subtotal * 0.1 : 0;
+  const displayTotal = totalFromStore > 0 ? totalFromStore : subtotal - discount;
 
   const handleApplyPromo = () => {
     hapticFeedback.impact('light');
@@ -162,31 +157,20 @@ export function CartSummary({
         {showTotal && (
           <div className="border-t pt-4 flex justify-between items-center">
             <span className="text-lg font-semibold">Total</span>
-            <span className="text-2xl font-bold">${total.toFixed(2)}</span>
+            <span className="text-2xl font-bold">${displayTotal.toFixed(2)}</span>
           </div>
         )}
 
-        {/* Checkout button - ALWAYS SHOW FOR DEBUGGING */}
-        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
-          <p className="text-sm text-yellow-800 mb-2">
-            Debug: hasItems={String(hasItems)}, hasCheckout={String(hasCheckout)}
-          </p>
-          {hasCheckout && hasItems ? (
-            <Button
-              className="w-full bg-green-600 hover:bg-green-700"
-              size="lg"
-              onClick={handleCheckout}
-            >
-              ✓ Continue to Payment
-            </Button>
-          ) : hasCheckout ? (
-            <Button className="w-full bg-gray-400" size="lg" disabled>
-              Add items to cart
-            </Button>
-          ) : (
-            <p className="text-red-600">ERROR: No checkout action configured!</p>
-          )}
-        </div>
+        {hasCheckout && (
+          <Button
+            className="w-full mt-4"
+            size="lg"
+            onClick={handleCheckout}
+            disabled={!hasItems}
+          >
+            {hasItems ? 'Continue to Payment' : 'Add items to cart'}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

@@ -107,7 +107,7 @@ export const useCartStore = create<CartState>()(
       addItem: (product, quantity = 1) => {
         set((state) => {
           const existingItem = state.items.find((item) => item.id === product.id);
-          
+
           if (existingItem) {
             return {
               items: state.items.map((item) =>
@@ -122,8 +122,15 @@ export const useCartStore = create<CartState>()(
             items: [...state.items, { ...product, quantity }],
           };
         });
-        
-        get().calculateTotal();
+
+        // Calculate total synchronously
+        const state = get();
+        const subtotal = state.items.reduce(
+          (sum, item) => sum + Number(item.price) * Number(item.quantity),
+          0
+        );
+        const discount = state.promoCode ? subtotal * 0.1 : 0;
+        set({ total: Math.round((subtotal - discount) * 100) / 100 });
       },
 
       removeItem: (productId: string) => {

@@ -183,7 +183,7 @@ function buildConfigFromDirectus(tenant: {
         components: [
           {
             id: 'product-list-featured',
-            type: 'ProductList',
+            type: isBooking ? 'ServiceList' : 'ProductList',
             props: {
               title: isEcommerce ? 'Featured Products' : 'Our Services',
               description: isEcommerce ? 'Our best sellers' : 'Choose your service',
@@ -201,7 +201,7 @@ function buildConfigFromDirectus(tenant: {
         components: [
           {
             id: 'product-list-catalog',
-            type: 'ProductList',
+            type: isBooking ? 'ServiceList' : 'ProductList',
             props: {
               title: isEcommerce ? 'All Products' : 'All Services',
               columns: 2,
@@ -238,19 +238,19 @@ function buildConfigFromDirectus(tenant: {
       },
       {
         id: 'checkout',
-        title: 'Checkout',
+        title: isBooking ? 'Book Appointment' : 'Checkout',
         route: '/checkout',
         components: [
           {
             id: 'checkout-form',
-            type: 'CheckoutForm',
+            type: isBooking ? 'BookingCheckoutForm' : 'CheckoutForm',
             props: {},
           },
           {
             id: 'payment-button',
             type: 'PaymentButton',
             props: {
-              text: 'Pay Now',
+              text: isBooking ? 'Confirm Booking' : 'Pay Now',
               variant: 'telegram',
               onPaymentSuccess: 'navigate:order-success',
             },

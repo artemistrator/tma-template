@@ -5,6 +5,8 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useCartStore } from '@/store/cart-store';
+import { useTelegramContext } from '@/lib/telegram/telegram-provider';
 import Image from 'next/image';
 
 export interface Service {
@@ -52,8 +54,23 @@ export function ServiceList({
   const pageColumns = (props?.columns as 1 | 2 | 3) || columns;
   const pageTitle = props?.title || title;
   const pageDescription = props?.description || description;
+  
+  const addItem = useCartStore((state) => state.addItem);
+  const { hapticFeedback } = useTelegramContext();
 
   const gridCols = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3" };
+
+  const handleAddToCart = (service: Service, e: React.MouseEvent) => {
+    e.stopPropagation();
+    addItem({
+      id: String(service.id),
+      name: service.name,
+      price: Number(service.price),
+      description: service.description,
+      category: service.category,
+    }, 1);
+    console.log('Added to cart:', service.name);
+  };
 
   if (data.length === 0) {
     return (
@@ -99,8 +116,17 @@ export function ServiceList({
             </CardContent>
 
             <CardFooter className="p-4 pt-0 flex items-center justify-between gap-2">
-              <span className="text-lg font-bold">${service.price.toFixed(2)}</span>
-              <Button size="sm" onClick={(e) => { e.stopPropagation(); onBook?.(String(service.id)); }} className="flex-1">Book</Button>
+              <span className="text-lg font-bold">${Number(service.price).toFixed(2)}</span>
+              <Button 
+                size="sm" 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  handleAddToCart(service, e);
+                }} 
+                className="flex-1"
+              >
+                Add
+              </Button>
             </CardFooter>
           </Card>
         ))}

@@ -167,7 +167,7 @@ export function OrderDetails({ orderId: propOrderId, order, onBack, onReorder, o
                   Quantity: {item.quantity}
                 </p>
                 <p className="font-semibold mt-1">
-                  ${item.price.toFixed(2)} × {item.quantity} = ${(item.price * item.quantity).toFixed(2)}
+                  ${Number(item.price).toFixed(2)} × {item.quantity} = ${(Number(item.price) * Number(item.quantity)).toFixed(2)}
                 </p>
               </div>
             </div>
