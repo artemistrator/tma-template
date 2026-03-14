@@ -46,7 +46,6 @@ export function ServiceList({
   props,
   columns = 2,
   onServiceClick,
-  onBook,
   className,
   emptyMessage = "No services available",
 }: ServiceListProps) {
@@ -56,7 +55,6 @@ export function ServiceList({
   const pageDescription = props?.description || description;
   
   const addItem = useCartStore((state) => state.addItem);
-  const { hapticFeedback } = useTelegramContext();
 
   const gridCols = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3" };
 

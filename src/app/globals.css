@@ -2,6 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===========================================
+   NATIVE TELEGRAM MINI APP FEEL
+   =========================================== */
+
+/* Remove text selection on tap - feels more native */
+* {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Remove blue tap highlight on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Remove 300ms tap delay on mobile */
+* {
+  touch-action: manipulation;
+}
+
+/* Prevent scroll "leak" - native feel */
+html {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch; /* Smooth iOS scroll */
+}
+
+/* Safe area insets for iPhone notch / Dynamic Island */
+.safe-area-inset-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-inset-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-inset-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Safe area as margin variants */
+.m-safe-top {
+  margin-top: env(safe-area-inset-top);
+}
+
+.m-safe-bottom {
+  margin-bottom: env(safe-area-inset-bottom);
+}
+
+/* ===========================================
+   END NATIVE FEEL CSS
+   =========================================== */
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

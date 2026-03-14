@@ -48,7 +48,7 @@ export function PaymentButton({
   const items = useCartStore((state) => state.items);
   const clearCart = useCartStore((state) => state.clearCart);
   const addOrder = useCartStore((state) => state.addOrder);
-  const { showAlert, hapticFeedback } = useTelegramContext();
+  const { showAlert, hapticFeedback, showMainButtonProgress, hideMainButtonProgress } = useTelegramContext();
   const { config } = useAppConfig();
   
   const tenantId = config?.meta.tenantId || 'default';
@@ -73,6 +73,9 @@ export function PaymentButton({
     setIsProcessing(true);
     hapticFeedback.impact('medium');
 
+    // Show native Telegram MainButton progress loader
+    showMainButtonProgress(true);
+
     try {
       await handleCreateOrder();
     } catch (error) {
@@ -80,6 +83,8 @@ export function PaymentButton({
       onPaymentError?.(error as Error);
     } finally {
       setIsProcessing(false);
+      // Hide native Telegram MainButton progress loader
+      hideMainButtonProgress();
     }
   };
 

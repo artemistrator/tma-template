@@ -9,16 +9,36 @@
 
 ### Native Buttons
 - ✅ `MainButton` - show/hide/setText/onClick
+- ✅ `MainButton.showProgress()` - progress loader during payment
+- ✅ `MainButton.hideProgress()` - hide loader
 - ✅ `BackButton` - show/hide/onClick
 
 ### Theme Integration
 - ✅ `themeParams` - all colors from Telegram
 - ✅ `colorScheme` - light/dark detection
+- ✅ CSS variables applied automatically (`--tg-bg`, `--tg-text`, etc.)
 
 ### Basic Setup
 - ✅ `tg.ready()` - initialization
 - ✅ `tg.expand()` - full screen
 - ✅ `initDataUnsafe` - user data access
+
+### Native Feel Enhancements (Phase 1 - COMPLETED ✅)
+- ✅ `tg.enableClosingConfirmation()` - prevent accidental close
+- ✅ `tg.disableVerticalSwipes()` - use our own scroll
+- ✅ `tg.setHeaderColor()` - match app header
+- ✅ `tg.setBackgroundColor()` - match app BG
+- ✅ Viewport management (height, stableHeight)
+- ✅ `viewportChanged` event listener
+
+### CSS for Native Feel (Phase 1 - COMPLETED ✅)
+- ✅ `user-select: none` - no text selection on tap
+- ✅ `-webkit-tap-highlight-color: transparent` - remove blue highlight
+- ✅ `touch-action: manipulation` - remove 300ms tap delay
+- ✅ `overscroll-behavior: contain` - prevent scroll "leak"
+- ✅ `-webkit-overflow-scrolling: touch` - smooth iOS scroll
+- ✅ Safe area insets (`.safe-area-inset-*` classes)
+- ✅ Margin variants (`.m-safe-top`, `.m-safe-bottom`)
 
 ---
 
@@ -264,16 +284,18 @@ interface PopupButton {
 
 ## Implementation Priority
 
-### Phase 1: Essential (Week 1)
-1. ✅ Enhanced Initialization (`enableClosingConfirmation`, `disableVerticalSwipes`)
-2. ✅ CSS for Native Feel (user-select, tap-highlight, safe-area)
-3. ✅ Viewport Management (viewportHeight, stableHeight)
-4. ✅ MainButton Loader (showProgress/hideProgress)
+### Phase 1: Essential ✅ COMPLETED!
+1. ✅ Enhanced Initialization (`enableClosingConfirmation`, `disableVerticalSwipes`, `setHeaderColor`, `setBackgroundColor`)
+2. ✅ CSS for Native Feel (`user-select`, `tap-highlight`, `safe-area`)
+3. ✅ Viewport Management (`viewportHeight`, `stableHeight`, event listener)
+4. ✅ MainButton Loader (`showProgress`/`hideProgress`)
+
+**Status: 100% COMPLETE! 🎉**
 
 ### Phase 2: User Experience (Week 2)
-5. ✅ Cloud Storage Integration (save cart, preferences)
-6. ✅ Contact & Write Access (requestWriteAccess)
-7. ✅ Popup & Alert Enhancements (showPopup, showMessage)
+5. ⏸️ Cloud Storage Integration (save cart, preferences)
+6. ⏸️ Contact & Write Access (`requestWriteAccess`)
+7. ⏸️ Popup & Alert Enhancements (`showPopup`, `showMessage`)
 
 ### Phase 3: Advanced Features (Week 3-4)
 8. ⏸️ Biometric Authentication

@@ -14,11 +14,24 @@ export interface TelegramTheme {
   colorScheme: 'light' | 'dark';
 }
 
+export interface ViewportInfo {
+  height: number;
+  stableHeight: number;
+  isExpanded: boolean;
+  isClosingConfirmationEnabled: boolean;
+}
+
 export function useTelegram() {
   const [isReady, setIsReady] = useState(false);
   const [theme, setTheme] = useState<TelegramTheme>({ colorScheme: 'light' });
   const [initData, setInitData] = useState<Record<string, unknown> | null>(null);
   const [platform, setPlatform] = useState('unknown');
+  const [viewport, setViewport] = useState<ViewportInfo>({
+    height: 0,
+    stableHeight: 0,
+    isExpanded: false,
+    isClosingConfirmationEnabled: false,
+  });
 
   useEffect(() => {
     // Only run on client
@@ -50,6 +63,48 @@ export function useTelegram() {
 
       // Expand viewport
       tg.expand();
+
+      // NATIVE FEEL ENHANCEMENTS
+      tg.enableClosingConfirmation(); // Prevent accidental close
+      tg.disableVerticalSwipes(); // Disable Telegram swipes - use our own scroll
+      
+      // Set header and background colors to match theme
+      tg.setHeaderColor(tg.themeParams.header_bg_color || tg.themeParams.bg_color);
+      tg.setBackgroundColor(tg.themeParams.bg_color);
+
+      // Apply theme colors to CSS variables for seamless integration
+      document.documentElement.style.setProperty('--tg-bg', tg.themeParams.bg_color || '#ffffff');
+      document.documentElement.style.setProperty('--tg-text', tg.themeParams.text_color || '#000000');
+      document.documentElement.style.setProperty('--tg-hint', tg.themeParams.hint_color || '#999999');
+      document.documentElement.style.setProperty('--tg-link', tg.themeParams.link_color || '#2481cc');
+      document.documentElement.style.setProperty('--tg-button', tg.themeParams.button_color || '#2481cc');
+      document.documentElement.style.setProperty('--tg-button-text', tg.themeParams.button_text_color || '#ffffff');
+      document.documentElement.style.setProperty('--tg-secondary-bg', tg.themeParams.secondary_bg_color || '#efefef');
+      document.documentElement.style.setProperty('--tg-header', tg.themeParams.header_bg_color || '#ffffff');
+
+      // Viewport management
+      setViewport({
+        height: tg.viewportHeight,
+        stableHeight: tg.viewportStableHeight,
+        isExpanded: tg.isExpanded,
+        isClosingConfirmationEnabled: true,
+      });
+
+      // Listen for viewport changes
+      const handleViewportChange = (isStateStable: boolean) => {
+        setViewport((prev) => ({
+          ...prev,
+          height: tg.viewportHeight,
+          stableHeight: isStateStable ? tg.viewportStableHeight : prev.stableHeight,
+        }));
+      };
+
+      tg.onEvent('viewportChanged', handleViewportChange);
+
+      // Cleanup
+      return () => {
+        tg.offEvent('viewportChanged', handleViewportChange);
+      };
     } else {
       // Fallback for development outside Telegram
       setIsReady(true);
@@ -73,6 +128,18 @@ export function useTelegram() {
     if (typeof window === 'undefined') return;
     const tg = window.Telegram?.WebApp;
     tg?.MainButton.hide();
+  };
+
+  const showMainButtonProgress = (animate = true) => {
+    if (typeof window === 'undefined') return;
+    const tg = window.Telegram?.WebApp;
+    tg?.MainButton?.showProgress(animate);
+  };
+
+  const hideMainButtonProgress = () => {
+    if (typeof window === 'undefined') return;
+    const tg = window.Telegram?.WebApp;
+    tg?.MainButton?.hideProgress();
   };
 
   const showBackButton = (onClick?: () => void) => {
@@ -157,9 +224,12 @@ export function useTelegram() {
     theme,
     initData,
     platform,
+    viewport,
     isTelegram: typeof window !== 'undefined' && !!window.Telegram?.WebApp,
     showMainButton,
     hideMainButton,
+    showMainButtonProgress,
+    hideMainButtonProgress,
     showBackButton,
     hideBackButton,
     hapticFeedback,

@@ -11,7 +11,16 @@ import { useAppConfig } from '@/context/app-config-context';
 
 interface BookingCheckoutFormProps {
   id?: string;
-  onSubmit?: (booking: any) => void;
+  onSubmit?: (booking: {
+    customerName: string;
+    customerPhone: string;
+    customerEmail?: string;
+    date: string;
+    notes?: string;
+    items: any[];
+    total: number;
+    tenantId?: string;
+  }) => void;
   className?: string;
 }
 
