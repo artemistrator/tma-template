@@ -53,13 +53,15 @@ export function initializeComponents() {
   // Booking components
   registerComponent('ServiceList', ServiceList as unknown as React.ComponentType<ComponentFactoryProps>);
   registerComponent('BookingCheckoutForm', BookingCheckoutForm as unknown as React.ComponentType<ComponentFactoryProps>);
+  registerComponent('BookingCalendar', BookingCalendar as unknown as React.ComponentType<ComponentFactoryProps>);
+  registerComponent('TimeSlots', TimeSlots as unknown as React.ComponentType<ComponentFactoryProps>);
 
   console.log('Components initialized:', [
   'Screen', 'Header', 'Modal', 'BottomNav',
   'ProductCard', 'ProductList', 'PromoSlider',
   'Cart', 'CartSummary', 'CheckoutForm', 'PaymentButton',
   'OrderSuccess', 'OrderFailed', 'OrdersList', 'OrderDetails', 'ProductDetails', 'SearchBar', 'FilterPanel',
-  'ServiceList', 'BookingCheckoutForm'
+  'ServiceList', 'BookingCheckoutForm', 'BookingCalendar', 'TimeSlots'
   ]);
 }
 
@@ -88,3 +90,5 @@ export { FilterPanel } from '@/modules/ecommerce/components/filter-panel';
 // Booking module exports
 export { ServiceList } from '@/modules/booking/components/ServiceList';
 export { BookingCheckoutForm } from '@/modules/booking/components/BookingCheckoutForm';
+export { BookingCalendar } from '@/modules/booking/components/BookingCalendar';
+export { TimeSlots } from '@/modules/booking/components/TimeSlots';

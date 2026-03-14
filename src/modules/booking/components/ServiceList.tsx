@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useCartStore } from '@/store/cart-store';
-import { useTelegramContext } from '@/lib/telegram/telegram-provider';
 import Image from 'next/image';
 
 export interface Service {

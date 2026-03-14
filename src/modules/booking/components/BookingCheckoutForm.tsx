@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 import { useCartStore } from '@/store/cart-store';
 import { useTelegramContext } from '@/lib/telegram/telegram-provider';
 import { useAppConfig } from '@/context/app-config-context';
+import { BookingCalendar } from './BookingCalendar';
+import { TimeSlots } from './TimeSlots';
 
 interface BookingCheckoutFormProps {
   id?: string;
@@ -17,7 +19,7 @@ interface BookingCheckoutFormProps {
     customerEmail?: string;
     date: string;
     notes?: string;
-    items: any[];
+    items: { id: string; name: string; price: number; quantity: number }[];
     total: number;
     tenantId?: string;
   }) => void;
@@ -32,11 +34,16 @@ export function BookingCheckoutForm({ id, onSubmit, className }: BookingCheckout
   const items = useCartStore((state) => state.items);
   const total = useCartStore((state) => state.total);
 
+  // Get service ID from first cart item
+  const serviceId = items[0]?.id || '';
+
+  const [selectedDate, setSelectedDate] = React.useState<Date>();
+  const [selectedTime, setSelectedTime] = React.useState<string>();
+  
   const [formData, setFormData] = React.useState({
     customerName: shippingAddress?.name || '',
     customerPhone: shippingAddress?.phone || '',
     customerEmail: shippingAddress?.address || '',
-    date: '',
     notes: '',
   });
 
@@ -56,8 +63,6 @@ export function BookingCheckoutForm({ id, onSubmit, className }: BookingCheckout
         return value.length < 2 ? 'Name must be at least 2 characters' : null;
       case 'customerPhone':
         return value.length < 10 ? 'Please enter a valid phone number' : null;
-      case 'date':
-        return !value ? 'Please select a date and time' : null;
       default:
         return null;
     }
@@ -75,6 +80,13 @@ export function BookingCheckoutForm({ id, onSubmit, className }: BookingCheckout
     e.preventDefault();
     hapticFeedback.impact('medium');
 
+    // Validate date and time
+    if (!selectedDate || !selectedTime) {
+      hapticFeedback.error();
+      showAlert('Please select date and time');
+      return;
+    }
+
     const newErrors: Record<string, string> = {};
     Object.entries(formData).forEach(([key, value]) => {
       const error = validateField(key, value);
@@ -90,7 +102,12 @@ export function BookingCheckoutForm({ id, onSubmit, className }: BookingCheckout
       return;
     }
 
-    // Save address and submit
+    // Combine date + time
+    const [hours, minutes] = selectedTime.split(':').map(Number);
+    const bookingDate = new Date(selectedDate);
+    bookingDate.setHours(hours, minutes, 0, 0);
+
+    // Save address
     setShippingAddress({
       name: formData.customerName,
       phone: formData.customerPhone,
@@ -100,11 +117,12 @@ export function BookingCheckoutForm({ id, onSubmit, className }: BookingCheckout
       country: '',
     });
 
+    // Submit booking
     onSubmit?.({
       customerName: formData.customerName,
       customerPhone: formData.customerPhone,
       customerEmail: formData.customerEmail,
-      date: formData.date,
+      date: bookingDate.toISOString(),
       notes: formData.notes,
       items,
       total,
@@ -117,10 +135,44 @@ export function BookingCheckoutForm({ id, onSubmit, className }: BookingCheckout
   return (
     <Card className={cn("", className)} id={id}>
       <CardHeader>
-        <CardTitle>Booking Details</CardTitle>
+        <CardTitle>Book Appointment</CardTitle>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <CardContent className="space-y-6">
+        {/* Step 1: Calendar */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold">Select Date</h3>
+          <BookingCalendar
+            selectedDate={selectedDate}
+            onSelectDate={(date) => {
+              setSelectedDate(date);
+              setSelectedTime(undefined); // Reset time when date changes
+              hapticFeedback.impact('light');
+            }}
+            minDate={new Date()}
+            maxDate={new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)} // 3 months
+          />
+        </div>
+
+        {/* Step 2: Time Slots */}
+        {selectedDate && serviceId && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Select Time</h3>
+            <TimeSlots
+              date={selectedDate}
+              serviceId={serviceId}
+              selectedTime={selectedTime}
+              onSelectTime={(time) => {
+                setSelectedTime(time);
+                hapticFeedback.impact('light');
+              }}
+            />
+          </div>
+        )}
+
+        {/* Step 3: Customer Info */}
+        <div className="space-y-4 pt-4 border-t">
+          <h3 className="text-sm font-semibold">Your Information</h3>
+          
           <div>
             <label htmlFor="customerName" className="block text-sm font-medium mb-1">
               Your Name *
@@ -174,24 +226,6 @@ export function BookingCheckoutForm({ id, onSubmit, className }: BookingCheckout
           </div>
 
           <div>
-            <label htmlFor="date" className="block text-sm font-medium mb-1">
-              Preferred Date & Time *
-            </label>
-            <Input
-              id="date"
-              name="date"
-              type="datetime-local"
-              value={formData.date}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={cn(inputClasses, errors.date && "border-destructive")}
-            />
-            {errors.date && (
-              <p className="text-sm text-destructive mt-1">{errors.date}</p>
-            )}
-          </div>
-
-          <div>
             <label htmlFor="notes" className="block text-sm font-medium mb-1">
               Notes (optional)
             </label>
@@ -204,11 +238,18 @@ export function BookingCheckoutForm({ id, onSubmit, className }: BookingCheckout
               placeholder="Any special requests or notes..."
             />
           </div>
+        </div>
 
-          <Button type="submit" className="w-full" size="lg">
-            Confirm Booking
-          </Button>
-        </form>
+        {/* Submit Button */}
+        <Button 
+          type="submit" 
+          className="w-full" 
+          size="lg"
+          onClick={handleSubmit}
+          disabled={!selectedDate || !selectedTime}
+        >
+          {(!selectedDate || !selectedTime) ? 'Select Date & Time' : 'Confirm Booking'}
+        </Button>
       </CardContent>
     </Card>
   );
