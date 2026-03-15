@@ -5,26 +5,6 @@ import { createDirectus, rest, readItems } from '@directus/sdk';
 const DIRECTUS_URL = process.env.DIRECTUS_URL || process.env.NEXT_PUBLIC_DIRECTUS_URL || 'http://localhost:8055';
 const directus = createDirectus(DIRECTUS_URL).with(rest());
 
-// Login for server-side
-const DIRECTUS_ADMIN_EMAIL = process.env.DIRECTUS_ADMIN_EMAIL;
-const DIRECTUS_ADMIN_PASSWORD = process.env.DIRECTUS_ADMIN_PASSWORD;
-
-let adminToken: string | null = null;
-
-async function getAdminToken() {
-  if (adminToken) return adminToken;
-  
-  const auth = await fetch(`${DIRECTUS_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: DIRECTUS_ADMIN_EMAIL, password: DIRECTUS_ADMIN_PASSWORD }),
-  });
-  
-  const data = await auth.json();
-  adminToken = data.data?.access_token || null;
-  return adminToken;
-}
-
 const CheckAvailabilitySchema = z.object({
   tenantId: z.string().min(1),
   serviceId: z.string().min(1),
@@ -92,14 +72,19 @@ export async function POST(request: NextRequest) {
     console.log(`[Availability API] Service duration: ${duration} min`);
 
     // Get all confirmed/pending bookings for this date
-    const token = await getAdminToken();
-    const adminDirectus = createDirectus(DIRECTUS_URL, { staticToken: token }).with(rest());
-    
-    const bookings = await adminDirectus.request(
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const bookings = await directus.request(
       readItems('bookings', {
         filter: {
           tenant_id: { _eq: tenantId },
-          date: { _starts_with: date },
+          date: {
+            _gte: startOfDay.toISOString(),
+            _lte: endOfDay.toISOString(),
+          },
           status: { _in: ['confirmed', 'pending'] },
         },
       })
