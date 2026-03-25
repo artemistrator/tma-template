@@ -3,11 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/utils';
 import { Order } from '@/store/cart-store';
 import { useTelegramContext } from '@/lib/telegram/telegram-provider';
 import { useCartStore } from '@/store/cart-store';
+import { useAppConfig } from '@/context/app-config-context';
+import { useOrderStatusSync } from '@/lib/hooks/use-order-status-sync';
 import Image from 'next/image';
 
 interface OrderDetailsProps {
@@ -18,31 +20,22 @@ interface OrderDetailsProps {
  onNavigate?: (pageId: string) => void;
 }
 
-const statusColors: Record<Order['status'], string> = {
- pending: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
- confirmed: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
- processing: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
- shipped: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
- delivered: 'bg-green-500/10 text-green-500 border-green-500/20',
- cancelled: 'bg-red-500/10 text-red-500 border-red-500/20',
-};
-
-const statusLabels: Record<Order['status'], string> = {
- pending: 'Pending',
- confirmed: 'Confirmed',
- processing: 'Processing',
- shipped: 'Shipped',
- delivered: 'Delivered',
- cancelled: 'Cancelled',
-};
+// statusLabels built dynamically via t() — see inside OrderDetails
 
 /**
  * OrderDetails - Detailed order view
  */
 export function OrderDetails({ orderId: propOrderId, order, onBack, onReorder, onNavigate }: OrderDetailsProps) {
  const { hapticFeedback } = useTelegramContext();
+ const { config } = useAppConfig();
+
  const ordersFromStore = useCartStore((state) => state.orders);
+ const updateOrderStatus = useCartStore((state) => state.updateOrderStatus);
  const [orderId, setOrderId] = useState<string | undefined>(propOrderId);
+
+ // Sync order statuses with server
+ useOrderStatusSync();
+ const [isCancelling, setIsCancelling] = useState(false);
 
  // Extract orderId from URL hash if not provided as prop
  useEffect(() => {
@@ -101,6 +94,32 @@ export function OrderDetails({ orderId: propOrderId, order, onBack, onReorder, o
     onReorder?.();
   };
 
+  const handleCancelBooking = async () => {
+    if (!foundOrder.bookingDate) return;
+    const confirmed = window.confirm('Вы уверены, что хотите отменить запись?');
+    if (!confirmed) return;
+    hapticFeedback.impact('medium');
+    setIsCancelling(true);
+    try {
+      const response = await fetch(`/api/bookings/${foundOrder.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled', tenantId: config?.meta?.slug || 'barber' }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        updateOrderStatus(foundOrder.id, 'cancelled');
+        hapticFeedback.success();
+      } else {
+        hapticFeedback.error();
+      }
+    } catch {
+      hapticFeedback.error();
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
  return (
     <div className="space-y-6">
       {/* Header */}
@@ -117,12 +136,7 @@ export function OrderDetails({ orderId: propOrderId, order, onBack, onReorder, o
             })}
           </p>
         </div>
-        <Badge
-          variant="outline"
-          className={cn(statusColors[foundOrder.status], 'font-medium px-4 py-2')}
-        >
-          {statusLabels[foundOrder.status]}
-        </Badge>
+        <StatusBadge status={foundOrder.status} />
       </div>
 
       {/* Order Items */}
@@ -142,6 +156,7 @@ export function OrderDetails({ orderId: propOrderId, order, onBack, onReorder, o
                  alt={item.name}
                  width={80}
                  height={80}
+                 unoptimized
                  className="rounded-md object-cover"
                />
               ) : (
@@ -163,6 +178,11 @@ export function OrderDetails({ orderId: propOrderId, order, onBack, onReorder, o
               )}
               <div className="flex-1">
                 <h3 className="font-semibold">{item.name}</h3>
+                {(item as { variantName?: string }).variantName && (
+                  <p className="text-xs text-muted-foreground">
+                    {(item as { variantName?: string }).variantName}
+                  </p>
+                )}
                 <p className="text-sm text-muted-foreground">
                   Quantity: {item.quantity}
                 </p>
@@ -175,8 +195,43 @@ export function OrderDetails({ orderId: propOrderId, order, onBack, onReorder, o
         </CardContent>
       </Card>
 
-      {/* Shipping Address */}
-      {foundOrder.shippingAddress && (
+      {/* Booking Details (for booking-type orders) */}
+      {foundOrder.bookingDate && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Appointment Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-sm">
+              {foundOrder.bookingService && (
+                <p><span className="font-medium">Service:</span> {foundOrder.bookingService}</p>
+              )}
+              <p>
+                <span className="font-medium">Date:</span>{' '}
+                {new Date(foundOrder.bookingDate).toLocaleDateString('ru-RU', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </p>
+              <p>
+                <span className="font-medium">Time:</span>{' '}
+                {foundOrder.bookingTime || foundOrder.bookingDate.split('T')[1]?.slice(0, 5)}
+              </p>
+              {foundOrder.shippingAddress?.name && (
+                <p><span className="font-medium">Name:</span> {foundOrder.shippingAddress.name}</p>
+              )}
+              {foundOrder.shippingAddress?.phone && (
+                <p><span className="font-medium">Phone:</span> {foundOrder.shippingAddress.phone}</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Shipping Address (for ecommerce orders only) */}
+      {!foundOrder.bookingDate && foundOrder.shippingAddress && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Shipping Address</CardTitle>
@@ -200,24 +255,26 @@ export function OrderDetails({ orderId: propOrderId, order, onBack, onReorder, o
         </Card>
       )}
 
-      {/* Order Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Order Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span className="font-medium">${foundOrder.total.toFixed(2)}</span>
+      {/* Order Summary (ecommerce only) */}
+      {!foundOrder.bookingDate && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Order Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span className="font-medium">${foundOrder.total.toFixed(2)}</span>
+              </div>
+              <div className="border-t pt-2 flex justify-between text-lg font-semibold">
+                <span>Total</span>
+                <span>${foundOrder.total.toFixed(2)}</span>
+              </div>
             </div>
-            <div className="border-t pt-2 flex justify-between text-lg font-semibold">
-              <span>Total</span>
-              <span>${foundOrder.total.toFixed(2)}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Actions */}
       <div className="flex gap-3">
@@ -227,6 +284,16 @@ export function OrderDetails({ orderId: propOrderId, order, onBack, onReorder, o
         {foundOrder.status === 'delivered' && (
           <Button onClick={handleReorder} className="flex-1">
             Reorder
+          </Button>
+        )}
+        {foundOrder.bookingDate && (foundOrder.status === 'pending' || foundOrder.status === 'confirmed') && (
+          <Button
+            onClick={handleCancelBooking}
+            variant="destructive"
+            className="flex-1"
+            disabled={isCancelling}
+          >
+            {isCancelling ? 'Cancelling...' : 'Cancel Booking'}
           </Button>
         )}
       </div>

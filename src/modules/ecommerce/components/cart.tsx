@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useCartStore, CartItem } from '@/store/cart-store';
 import { useTelegramContext } from '@/lib/telegram/telegram-provider';
 import { Minus, Plus, Trash2 } from 'lucide-react';
+import { EmptyState, emptyIcon } from '@/components/ui/empty-state';
 
 interface CartProps {
   id?: string;
@@ -21,6 +22,34 @@ interface CartProps {
     emptyMessage?: string;
   };
   showMockData?: boolean;
+}
+
+function CartItemImage({ src, alt, onClick }: { src: string; alt: string; onClick?: () => void }) {
+  const [errored, setErrored] = React.useState(false);
+
+  if (errored) {
+    return (
+      <div
+        className="w-20 h-20 rounded-md bg-muted flex-shrink-0 flex items-center justify-center cursor-pointer"
+        onClick={onClick}
+      >
+        <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      className="w-20 h-20 rounded-md object-cover flex-shrink-0 cursor-pointer"
+      onError={() => setErrored(true)}
+      onClick={onClick}
+    />
+  );
 }
 
 /**
@@ -60,16 +89,12 @@ export function Cart({
 
   if (items.length === 0) {
     if (!showEmpty) return null;
-    
     return (
-      <div className={cn("text-center py-12", className)} id={id}>
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-          <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-          </svg>
-        </div>
-        <p className="text-muted-foreground">{emptyMessage}</p>
-      </div>
+      <EmptyState
+        icon={emptyIcon('cart')}
+        title={emptyMessage}
+        className={className}
+      />
     );
   }
 
@@ -80,9 +105,9 @@ export function Cart({
           <CardContent className="p-4">
             <div className="flex gap-4">
               {item.image && (
-                <div
-                  className="w-20 h-20 rounded-md bg-cover bg-center flex-shrink-0 cursor-pointer"
-                  style={{ backgroundImage: `url(${item.image})` }}
+                <CartItemImage
+                  src={item.image}
+                  alt={item.name}
                   onClick={() => onProductClick?.(item.id)}
                 />
               )}
@@ -94,7 +119,10 @@ export function Cart({
                 >
                   {item.name}
                 </h3>
-                {item.category && (
+                {item.variantName && (
+                  <p className="text-xs text-muted-foreground capitalize">{item.variantName}</p>
+                )}
+                {!item.variantName && item.category && (
                   <p className="text-sm text-muted-foreground">{item.category}</p>
                 )}
                 <p className="text-lg font-bold mt-1">
@@ -133,6 +161,11 @@ export function Cart({
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => handleIncrease(item)}
+                disabled={
+                  item.stockQuantity !== undefined &&
+                  item.stockQuantity > 0 &&
+                  item.quantity >= item.stockQuantity
+                }
               >
                 <Plus className="w-4 h-4" />
               </Button>

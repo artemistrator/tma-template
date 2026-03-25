@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createRateLimiter } from '@/lib/rate-limit';
+
+const limiter = createRateLimiter({ limit: 10, windowMs: 60_000, prefix: 'invoice' });
 
 /**
  * Create Invoice API Endpoint
- * 
+ *
  * This is a stub for future payment integration.
  * In production, this should:
  * 1. Validate cart items and prices from database
@@ -10,6 +13,9 @@ import { NextRequest, NextResponse } from 'next/server';
  * 3. Return invoice URL for client to open
  */
 export async function POST(request: NextRequest) {
+  const blocked = limiter.check(request);
+  if (blocked) return blocked;
+
   try {
     const body = await request.json();
     const { items, total, shippingAddress, promoCode } = body;

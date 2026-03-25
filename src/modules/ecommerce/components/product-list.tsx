@@ -1,9 +1,12 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ProductCard } from './product-card';
+import { SearchBar } from './search-bar';
+import { FilterPanel } from './filter-panel';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState, emptyIcon } from '@/components/ui/empty-state';
 import { useProductStore } from '@/store/product-store';
 import { useCartStore } from '@/store/cart-store';
 
@@ -15,6 +18,7 @@ interface Product {
   description?: string;
   category?: string;
   badge?: string;
+  stockQuantity?: number;
 }
 
 interface ProductListProps {
@@ -23,14 +27,15 @@ interface ProductListProps {
   description?: string;
   data?: Product[];
   props?: {
-  data?: Product[];
+    data?: Product[];
     title?: string;
-  description?: string;
-   limit?: number;
-  columns?: 1 | 2 | 3;
-  enableFiltering?: boolean;
-  showFavoritesOnly?: boolean;
-  onProductClick?: string | ((productId: string) => void);
+    description?: string;
+    limit?: number;
+    columns?: 1 | 2 | 3;
+    enableFiltering?: boolean;
+    showFavoritesOnly?: boolean;
+    showCategoryFilter?: boolean;
+    onProductClick?: string | ((productId: string) => void);
   };
   limit?: number;
   columns?: 1 | 2 | 3;
@@ -41,6 +46,7 @@ interface ProductListProps {
   emptyMessage?: string;
   enableFiltering?: boolean;
   showFavoritesOnly?: boolean;
+  showCategoryFilter?: boolean;
   onNavigate?: (pageId: string) => void;
 }
 
@@ -55,92 +61,110 @@ export function ProductList({
   data: directData,
   props,
   limit,
- columns = 2,
+  columns = 2,
   loading = false,
   onProductClick,
   onAddToCart,
   className,
   emptyMessage = "No products found",
   enableFiltering: directEnableFiltering = false,
-  showFavoritesOnly: directShowFavoritesOnly= false,
+  showFavoritesOnly: directShowFavoritesOnly = false,
+  showCategoryFilter: directShowCategoryFilter = true,
   onNavigate,
 }: ProductListProps) {
   // Support both direct props and nested props from schema
- const enableFiltering= props?.enableFiltering ?? directEnableFiltering;
- const showFavoritesOnly = props?.showFavoritesOnly ?? directShowFavoritesOnly;
-  
-  //Use data from props.data or direct data
- const data = React.useMemo(() => props?.data || directData || [], [props?.data, directData]);
- const pageLimit = props?.limit || limit;
- const pageColumns = (props?.columns as 1 | 2 | 3) || columns;
- const pageTitle = props?.title || title;
- const pageDescription = props?.description || description;
+  const enableFiltering = props?.enableFiltering ?? directEnableFiltering;
+  const showFavoritesOnly = props?.showFavoritesOnly ?? directShowFavoritesOnly;
+  const showCategoryFilter = props?.showCategoryFilter ?? directShowCategoryFilter;
 
-  // Subscribe to store for filtering
+  // Use data from props.data or direct data
+  const data = React.useMemo(() => props?.data || directData || [], [props?.data, directData]);
+  const pageLimit = props?.limit || limit;
+  const pageColumns = (props?.columns as 1 | 2 | 3) || columns;
+  const pageTitle = props?.title || title;
+  const pageDescription = props?.description || description;
+
+  // Local category filter state
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  // Preselect category from CategoryGrid navigation
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const preselect = sessionStorage.getItem('catalog_preselect_category');
+    if (preselect) {
+      sessionStorage.removeItem('catalog_preselect_category');
+      setActiveCategory(preselect);
+    }
+  }, []);
+
+  // Derive unique categories from data
+  const categories = React.useMemo(() => {
+    const cats = data
+      .map(p => p.category)
+      .filter((c): c is string => Boolean(c));
+    return Array.from(new Set(cats));
+  }, [data]);
+
+  // Subscribe to store for advanced filtering
   const setAllProducts = useProductStore((state) => state.setAllProducts);
+  const setSelectedProduct = useProductStore((state) => state.setSelectedProduct);
   const searchQuery = useProductStore((state) => state.searchQuery);
   const selectedCategories = useProductStore((state) => state.selectedCategories);
   const priceRange = useProductStore((state) => state.priceRange);
   const allProducts = useProductStore((state) => state.allProducts);
-  
+
   // Favorites
   const favorites = useCartStore((state) => state.favorites);
 
-  // Initialize products in store if enableFiltering is true
+  // Always populate product store so ProductDetails can find products by ID
   useEffect(() => {
-    if (enableFiltering && data.length > 0) {
+    if (data.length > 0) {
       setAllProducts(data);
     }
-  }, [enableFiltering, data, setAllProducts]);
+  }, [data, setAllProducts]);
 
-  // Filter products based on search and filters
+  // Filter products based on category chip + search/store filters
   const displayData = React.useMemo(() => {
     if (showFavoritesOnly) {
-      // Show only favorite products from the provided data
-     return data.filter(product => favorites.includes(product.id));
-    }
-    
-    if (!enableFiltering) {
-     return pageLimit ? data.slice(0, pageLimit) : data;
+      return data.filter(product => favorites.includes(product.id));
     }
 
-    // Filter allProducts based on current filters
-    let filtered = [...allProducts];
+    let base = enableFiltering ? [...allProducts] : [...data];
 
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((product) =>
-        product.name.toLowerCase().includes(query) ||
-        product.description?.toLowerCase().includes(query) ||
-        product.category?.toLowerCase().includes(query)
+    // Category chip filter (local)
+    if (activeCategory) {
+      base = base.filter(p => p.category === activeCategory);
+    }
+
+    if (enableFiltering) {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        base = base.filter((product) =>
+          product.name.toLowerCase().includes(query) ||
+          product.description?.toLowerCase().includes(query) ||
+          product.category?.toLowerCase().includes(query)
+        );
+      }
+
+      // Store-based category filter (from filter panel)
+      if (selectedCategories.length > 0) {
+        base = base.filter((product) => {
+          if (!product.category) return false;
+          return selectedCategories.some(
+            (catId) => catId.toLowerCase() === product.category?.toLowerCase()
+          );
+        });
+      }
+
+      // Price filter
+      base = base.filter(
+        (product) => product.price >= priceRange[0] && product.price <= priceRange[1]
       );
     }
 
-    // Category filter
-    if (selectedCategories.length > 0) {
-      const categoryMap: Record<string, string[]> = {
-        'audio': ['audio'],
-        'wearables': ['wearables'],
-        'accessories': ['accessories'],
-        'peripherals': ['peripherals'],
-      };
-      filtered = filtered.filter((product) => {
-        if (!product.category) return false;
-        const categoryKey = product.category.toLowerCase();
-        return selectedCategories.some((catId) =>
-          categoryMap[catId]?.includes(categoryKey)
-        );
-      });
-    }
-
-    // Price filter
-    filtered = filtered.filter(
-      (product) => product.price >= priceRange[0] && product.price <= priceRange[1]
-    );
-
-    return pageLimit ? filtered.slice(0, pageLimit) : filtered;
-  }, [enableFiltering, showFavoritesOnly, allProducts, searchQuery, selectedCategories, priceRange, data, pageLimit, favorites]);
+    return pageLimit ? base.slice(0, pageLimit) : base;
+  }, [enableFiltering, showFavoritesOnly, allProducts, searchQuery, selectedCategories, priceRange, data, pageLimit, favorites, activeCategory]);
 
   const gridCols = {
     1: "grid-cols-1",
@@ -166,16 +190,13 @@ export function ProductList({
     );
   }
 
-  if (displayData.length === 0) {
+  if (displayData.length === 0 && !activeCategory) {
     return (
-      <div className={cn("text-center py-12", className)} id={id}>
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-          <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
-        <p className="text-muted-foreground">{emptyMessage}</p>
-      </div>
+      <EmptyState
+        icon={emptyIcon('search')}
+        title={emptyMessage}
+        className={cn(className)}
+      />
     );
   }
 
@@ -188,39 +209,93 @@ export function ProductList({
         </div>
       )}
 
-      <div className={cn("grid gap-4", gridCols[pageColumns])}>
-        {displayData.map((product) => (
-          <ProductCard
-            key={product.id}
-            productId={product.id}
-            name={product.name}
-            price={product.price}
-            image={product.image}
-            description={product.description}
-            category={product.category}
-            badge={product.badge}
-            onClick={() => {
-              // Check if onProductClick is a navigate string
-              const navigateString = typeof onProductClick === 'string' ? onProductClick : props?.onProductClick;
-              const customHandler = typeof onProductClick === 'function' ? onProductClick : undefined;
-              
-              if (typeof navigateString === 'string' && navigateString.startsWith('navigate:')) {
-                const pageId = navigateString.split(':')[1];
-                window.location.hash = `${pageId}?productId=${product.id}`;
-                onNavigate?.(pageId);
-              } else if (customHandler) {
-                customHandler(product.id);
-              } else {
-                // Default: navigate to product-details
-                window.location.hash = `product-details?productId=${product.id}`;
-                onNavigate?.('product-details');
-              }
-            }}
-            onAddToCart={() => onAddToCart?.(product.id)}
-            onNavigate={onNavigate}
-          />
-        ))}
-      </div>
+      {/* Search bar */}
+      {enableFiltering && (
+        <SearchBar placeholder="Search products..." />
+      )}
+
+      {/* Advanced filter panel (categories + price range) */}
+      {enableFiltering && categories.length > 0 && (
+        <FilterPanel
+          categories={categories.map((c) => ({ id: c, label: c }))}
+          priceRange={{
+            min: 0,
+            max: Math.ceil(Math.max(...data.map((p) => p.price), 100) / 10) * 10,
+          }}
+        />
+      )}
+
+      {/* Category chip filter bar */}
+      {showCategoryFilter && categories.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
+          <button
+            onClick={() => setActiveCategory(null)}
+            className={cn(
+              "flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium border transition-colors",
+              activeCategory === null
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary hover:text-primary"
+            )}
+          >
+            All
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
+              className={cn(
+                "flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium border transition-colors",
+                activeCategory === cat
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary hover:text-primary"
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {displayData.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">No products in this category</p>
+        </div>
+      ) : (
+        <div className={cn("grid gap-4", gridCols[pageColumns])}>
+          {displayData.map((product) => (
+            <ProductCard
+              key={product.id}
+              productId={product.id}
+              name={product.name}
+              price={product.price}
+              image={product.image}
+              description={product.description}
+              category={product.category}
+              badge={product.badge}
+              stockQuantity={product.stockQuantity}
+              onClick={() => {
+                setSelectedProduct(product);
+
+                const navigateString = typeof onProductClick === 'string' ? onProductClick : props?.onProductClick;
+                const customHandler = typeof onProductClick === 'function' ? onProductClick : undefined;
+
+                if (typeof navigateString === 'string' && navigateString.startsWith('navigate:')) {
+                  const pageId = navigateString.split(':')[1];
+                  window.location.hash = `${pageId}?productId=${product.id}`;
+                  onNavigate?.(pageId);
+                } else if (customHandler) {
+                  customHandler(product.id);
+                } else {
+                  window.location.hash = `product-details?productId=${product.id}`;
+                  onNavigate?.('product-details');
+                }
+              }}
+              onAddToCart={() => onAddToCart?.(product.id)}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

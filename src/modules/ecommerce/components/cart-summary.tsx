@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useCartStore } from '@/store/cart-store';
 import { useTelegramContext } from '@/lib/telegram/telegram-provider';
+import { useAppConfig } from '@/context/app-config-context';
 
 interface CartSummaryProps {
   id?: string;
@@ -28,7 +29,7 @@ interface CartSummaryProps {
 
 /**
  * CartSummary - Cart totals and summary component
- * Displays subtotal, discount, and total with optional promo code input
+ * Displays subtotal, discount, and total with real promo code validation
  */
 export function CartSummary({
   id,
@@ -41,63 +42,80 @@ export function CartSummary({
   props,
   onNavigate,
 }: CartSummaryProps) {
-  // Support both direct props and nested props from schema
   const showSubtotal = props?.showSubtotal ?? directShowSubtotal;
   const showDiscount = props?.showDiscount ?? directShowDiscount;
   const showTotal = props?.showTotal ?? directShowTotal;
   const promoCodeEnabled = props?.promoCodeEnabled ?? directPromoCodeEnabled;
   const checkoutAction = props?.onCheckout ?? onCheckout;
 
-  console.log('[CartSummary] Received props:', {
-    props,
-    onCheckout,
-    checkoutAction,
-    directPromoCodeEnabled,
-  });
-
   const items = useCartStore((state) => state.items);
   const promoCode = useCartStore((state) => state.promoCode);
+  const discountAmount = useCartStore((state) => state.discountAmount);
   const applyPromoCode = useCartStore((state) => state.applyPromoCode);
+  const removePromo = useCartStore((state) => state.removePromo);
   const totalFromStore = useCartStore((state) => state.total);
   const { hapticFeedback } = useTelegramContext();
+  const { config } = useAppConfig();
 
   const [promoInput, setPromoInput] = React.useState('');
   const [promoError, setPromoError] = React.useState('');
+  const [promoLoading, setPromoLoading] = React.useState(false);
 
-  // Calculate subtotal for display (use Number() to handle strings from Directus)
   const subtotal = items.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
-  const discount = promoCode ? subtotal * 0.1 : 0;
-  const displayTotal = totalFromStore > 0 ? totalFromStore : subtotal - discount;
+  const displayTotal = totalFromStore > 0 ? totalFromStore : subtotal - discountAmount;
 
-  const handleApplyPromo = () => {
+  const handleApplyPromo = async () => {
     hapticFeedback.impact('light');
-
-    // Simple validation - in real app, validate via API
-    if (promoInput.trim().length < 3) {
+    const code = promoInput.trim();
+    if (code.length < 3) {
       setPromoError('Promo code must be at least 3 characters');
       return;
     }
 
-    applyPromoCode(promoInput.trim());
+    setPromoLoading(true);
+    setPromoError('');
+
+    try {
+      const tenantId = config?.meta?.slug || 'default';
+      const response = await fetch('/api/promo/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, tenantId, orderTotal: subtotal }),
+      });
+      const data = await response.json();
+
+      if (data.valid) {
+        applyPromoCode(data.code, data.discountAmount);
+        hapticFeedback.success();
+      } else {
+        setPromoError(data.error || 'Invalid promo code');
+        hapticFeedback.error();
+      }
+    } catch {
+      setPromoError('Failed to validate promo code');
+      hapticFeedback.error();
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    hapticFeedback.impact('light');
+    removePromo();
+    setPromoInput('');
     setPromoError('');
   };
 
   const handleCheckout = () => {
     hapticFeedback.impact('medium');
-    console.log('[CartSummary] Checkout clicked!', { checkoutAction, items: items.length });
-
-    // Handle navigation string like "navigate:checkout"
     if (typeof checkoutAction === 'string' && checkoutAction.startsWith('navigate:')) {
       const targetPage = checkoutAction.split(':')[1];
-      console.log('[CartSummary] Navigating to:', targetPage);
       onNavigate?.(targetPage);
     }
   };
 
   const hasItems = items.length > 0;
   const hasCheckout = !!checkoutAction;
-
-  console.log('[CartSummary] Render:', { hasItems, hasCheckout, showButton: hasCheckout && hasItems });
 
   return (
     <Card className={cn("", className)} id={id}>
@@ -112,10 +130,10 @@ export function CartSummary({
           </div>
         )}
 
-        {showDiscount && discount > 0 && (
-          <div className="flex justify-between text-sm text-green-600">
-            <span>Discount {promoCode && `( ${promoCode} )`}</span>
-            <span>-${discount.toFixed(2)}</span>
+        {showDiscount && discountAmount > 0 && (
+          <div className="flex justify-between text-sm text-success-foreground">
+            <span>Discount {promoCode && `(${promoCode})`}</span>
+            <span>-${discountAmount.toFixed(2)}</span>
           </div>
         )}
 
@@ -128,10 +146,15 @@ export function CartSummary({
                 setPromoInput(e.target.value);
                 setPromoError('');
               }}
+              onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
               className="flex-1"
             />
-            <Button onClick={handleApplyPromo} variant="outline">
-              Apply
+            <Button
+              onClick={handleApplyPromo}
+              variant="outline"
+              disabled={promoLoading}
+            >
+              {promoLoading ? '...' : 'Apply'}
             </Button>
           </div>
         )}
@@ -141,12 +164,12 @@ export function CartSummary({
         )}
 
         {promoCode && (
-          <div className="flex items-center justify-between p-3 bg-green-50 text-green-700 rounded-lg">
-            <span className="text-sm">Promo code applied: {promoCode}</span>
+          <div className="flex items-center justify-between p-3 bg-success-bg text-success-foreground rounded-lg">
+            <span className="text-sm">Promo applied: {promoCode}</span>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => applyPromoCode('')}
+              onClick={handleRemovePromo}
               className="h-auto p-1"
             >
               ✕
@@ -157,7 +180,7 @@ export function CartSummary({
         {showTotal && (
           <div className="border-t pt-4 flex justify-between items-center">
             <span className="text-lg font-semibold">Total</span>
-            <span className="text-2xl font-bold">${displayTotal.toFixed(2)}</span>
+            <span className="text-2xl font-bold">${Math.max(0, displayTotal).toFixed(2)}</span>
           </div>
         )}
 

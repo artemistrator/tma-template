@@ -8,15 +8,19 @@ export interface Product {
   image?: string;
   description?: string;
   category?: string;
+  stockQuantity?: number; // -1 = unlimited, 0 = out of stock, >0 = limited
 }
 
 export interface CartItem extends Product {
   quantity: number;
+  variantId?: string;
+  variantName?: string;
 }
 
 export interface ShippingAddress {
   name: string;
   phone: string;
+  email?: string;
   address: string;
   city: string;
   zipCode: string;
@@ -31,14 +35,31 @@ export interface TelegramUser {
   phone?: string;
 }
 
+/** Delivery info stored in cart & order */
+export interface DeliveryInfo {
+  method: string; // 'pickup' | 'courier' | 'cdek'
+  optionId: string; // DeliveryOption.id
+  price: number;
+  name: string;
+  pickupPointId?: string;
+  pickupPointName?: string;
+  pickupPointAddress?: string;
+  estimatedDays?: string;
+}
+
 export interface Order {
   id: string;
   items: CartItem[];
   total: number;
   shippingAddress: ShippingAddress;
   telegramUser?: TelegramUser;
+  delivery?: DeliveryInfo;
   status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   createdAt: string;
+  // Booking-specific fields
+  bookingDate?: string; // ISO datetime string of the appointment
+  bookingTime?: string; // "HH:MM" selected time
+  bookingService?: string; // service name
 }
 
 interface CartState {
@@ -46,6 +67,8 @@ interface CartState {
   shippingAddress: ShippingAddress | null;
   telegramUser: TelegramUser | null;
   promoCode: string | null;
+  discountAmount: number; // exact discount amount from validated promo
+  delivery: DeliveryInfo | null;
   total: number;
   orders: Order[];
   favorites: string[]; // product IDs
@@ -57,13 +80,16 @@ interface CartState {
   clearCart: () => void;
   setShippingAddress: (address: ShippingAddress) => void;
   setTelegramUser: (user: TelegramUser) => void;
-  applyPromoCode: (code: string) => void;
+  setDelivery: (delivery: DeliveryInfo | null) => void;
+  applyPromoCode: (code: string, discountAmount?: number) => void;
+  removePromo: () => void;
   calculateTotal: () => number;
   getItemCount: () => number;
 
   // Order actions
   addOrder: (order: Order) => void;
   getOrders: () => Order[];
+  updateOrderStatus: (orderId: string, status: Order['status']) => void;
 
   // Favorites
   addToFavorites: (productId: string) => void;
@@ -100,6 +126,8 @@ export const useCartStore = create<CartState>()(
       shippingAddress: null,
       telegramUser: null,
       promoCode: null,
+      discountAmount: 0,
+      delivery: null,
       total: 0,
       orders: [],
       favorites: [],
@@ -107,30 +135,26 @@ export const useCartStore = create<CartState>()(
       addItem: (product, quantity = 1) => {
         set((state) => {
           const existingItem = state.items.find((item) => item.id === product.id);
+          const limit = product.stockQuantity && product.stockQuantity > 0 ? product.stockQuantity : Infinity;
 
           if (existingItem) {
+            const newQty = Math.min(existingItem.quantity + quantity, limit);
             return {
               items: state.items.map((item) =>
                 item.id === product.id
-                  ? { ...item, quantity: item.quantity + quantity }
+                  ? { ...item, quantity: newQty }
                   : item
               ),
             };
           }
 
           return {
-            items: [...state.items, { ...product, quantity }],
+            items: [...state.items, { ...product, quantity: Math.min(quantity, limit) }],
           };
         });
 
-        // Calculate total synchronously
-        const state = get();
-        const subtotal = state.items.reduce(
-          (sum, item) => sum + Number(item.price) * Number(item.quantity),
-          0
-        );
-        const discount = state.promoCode ? subtotal * 0.1 : 0;
-        set({ total: Math.round((subtotal - discount) * 100) / 100 });
+        // Recalculate total
+        get().calculateTotal();
       },
 
       removeItem: (productId: string) => {
@@ -148,16 +172,18 @@ export const useCartStore = create<CartState>()(
         }
 
         set((state) => ({
-          items: state.items.map((item) =>
-            item.id === productId ? { ...item, quantity } : item
-          ),
+          items: state.items.map((item) => {
+            if (item.id !== productId) return item;
+            const limit = item.stockQuantity && item.stockQuantity > 0 ? item.stockQuantity : Infinity;
+            return { ...item, quantity: Math.min(quantity, limit) };
+          }),
         }));
         
         get().calculateTotal();
       },
 
       clearCart: () => {
-        set({ items: [], promoCode: null, total: 0 });
+        set({ items: [], promoCode: null, discountAmount: 0, delivery: null, total: 0 });
       },
 
       setShippingAddress: (address: ShippingAddress) => {
@@ -168,8 +194,18 @@ export const useCartStore = create<CartState>()(
         set({ telegramUser: user });
       },
 
-      applyPromoCode: (code: string) => {
-        set({ promoCode: code });
+      setDelivery: (delivery: DeliveryInfo | null) => {
+        set({ delivery });
+        get().calculateTotal();
+      },
+
+      applyPromoCode: (code: string, discountAmount?: number) => {
+        set({ promoCode: code, discountAmount: discountAmount ?? 0 });
+        get().calculateTotal();
+      },
+
+      removePromo: () => {
+        set({ promoCode: null, discountAmount: 0 });
         get().calculateTotal();
       },
 
@@ -179,12 +215,13 @@ export const useCartStore = create<CartState>()(
           (sum, item) => sum + item.price * item.quantity,
           0
         );
-        
-        const discount = state.promoCode ? subtotal * 0.1 : 0;
-        const total = subtotal - discount;
-        
+
+        const discount = state.discountAmount > 0 ? state.discountAmount : 0;
+        const deliveryPrice = state.delivery?.price || 0;
+        const total = Math.max(0, subtotal - discount + deliveryPrice);
+
         set({ total: Math.round(total * 100) / 100 });
-        
+
         return total;
       },
 
@@ -204,6 +241,12 @@ export const useCartStore = create<CartState>()(
 
       getOrders: () => {
         return get().orders;
+      },
+
+      updateOrderStatus: (orderId: string, status: Order['status']) => {
+        set((state) => ({
+          orders: state.orders.map((o) => o.id === orderId ? { ...o, status } : o),
+        }));
       },
 
       // Favorites
@@ -229,6 +272,8 @@ export const useCartStore = create<CartState>()(
       partialize: (state) => ({
         items: state.items,
         promoCode: state.promoCode,
+        discountAmount: state.discountAmount,
+        delivery: state.delivery,
         shippingAddress: state.shippingAddress,
         telegramUser: state.telegramUser,
         orders: state.orders,

@@ -7,6 +7,7 @@ import { useTelegramContext } from '@/lib/telegram/telegram-provider';
 interface HeaderProps {
   title?: string;
   subtitle?: string;
+  logo?: string;
   showBackButton?: boolean;
   onBack?: () => void;
   rightAction?: React.ReactNode;
@@ -16,10 +17,12 @@ interface HeaderProps {
 /**
  * Header - Navigation header component
  * Integrates with Telegram BackButton
+ * Displays logo image if provided, otherwise text title
  */
 export function Header({
   title,
   subtitle,
+  logo,
   showBackButton = false,
   onBack,
   rightAction,
@@ -64,12 +67,17 @@ export function Header({
                 </svg>
               </button>
             )}
-            <div>
-              {title && <h1 className="text-lg font-semibold">{title}</h1>}
+            <div className="flex items-center gap-2.5">
+              {logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logo} alt={title || ''} className="h-8 w-auto object-contain" />
+              ) : (
+                title && <h1 className="text-lg font-semibold">{title}</h1>
+              )}
               {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
             </div>
           </div>
-          
+
           {rightAction && <div>{rightAction}</div>}
         </div>
       </div>

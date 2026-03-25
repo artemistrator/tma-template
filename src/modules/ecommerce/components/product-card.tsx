@@ -9,6 +9,7 @@ import { useCartStore } from '@/store/cart-store';
 import { useTelegramContext } from '@/lib/telegram/telegram-provider';
 import Image from 'next/image';
 import { Heart } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export interface ProductCardProps {
   id?: string;
@@ -19,6 +20,7 @@ export interface ProductCardProps {
   description?: string;
   category?: string;
   badge?: string;
+  stockQuantity?: number; // -1 = unlimited, 0 = out of stock, >0 = limited
   onAddToCart?: () => void;
   onClick?: () => void;
   className?: string;
@@ -30,9 +32,27 @@ export interface ProductCardProps {
     description?: string;
     category?: string;
     badge?: string;
+    stockQuantity?: number;
     onClick?: string | (() => void);
   };
   onNavigate?: (pageId: string) => void;
+}
+
+function ImageWithSkeleton({ src, alt }: { src: string; alt: string }) {
+  const [loaded, setLoaded] = React.useState(false);
+  return (
+    <>
+      {!loaded && <Skeleton className="absolute inset-0 rounded-none" />}
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        unoptimized
+        className={cn('object-cover transition-opacity duration-300', loaded ? 'opacity-100' : 'opacity-0')}
+        onLoad={() => setLoaded(true)}
+      />
+    </>
+  );
 }
 
 /**
@@ -47,6 +67,7 @@ export function ProductCard({
   description: propDescription,
   category: propCategory,
   badge: propBadge,
+  stockQuantity: propStockQuantity,
   onAddToCart,
   onClick,
   className,
@@ -61,6 +82,9 @@ export function ProductCard({
   const description = props?.description || propDescription;
   const category = props?.category || propCategory;
   const badge = props?.badge || propBadge;
+  const stockQuantity = props?.stockQuantity ?? propStockQuantity;
+
+  const isOutOfStock = stockQuantity === 0;
 
   const addItem = useCartStore((state) => state.addItem);
   const { hapticFeedback } = useTelegramContext();
@@ -74,6 +98,7 @@ export function ProductCard({
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isOutOfStock) return;
     hapticFeedback.impact('light');
 
     addItem({
@@ -83,6 +108,7 @@ export function ProductCard({
       image,
       description,
       category,
+      stockQuantity,
     }, 1);
 
     onAddToCart?.();
@@ -90,10 +116,9 @@ export function ProductCard({
 
   const handleClick = () => {
     hapticFeedback.selection();
-    // Check if onClick is a navigate string from props
     const navigateString = typeof onClick === 'string' ? onClick : props?.onClick;
     const customHandler = typeof onClick === 'function' ? onClick : undefined;
-    
+
     if (typeof navigateString === 'string' && navigateString.startsWith('navigate:')) {
       const pageId = navigateString.split(':')[1];
       window.location.hash = `${pageId}?productId=${productId}`;
@@ -101,7 +126,6 @@ export function ProductCard({
     } else if (customHandler) {
       customHandler();
     } else {
-      // Default: navigate to product-details
       window.location.hash = `product-details?productId=${productId}`;
       onNavigate?.('product-details');
     }
@@ -110,9 +134,9 @@ export function ProductCard({
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     hapticFeedback.impact('light');
-    
+
     if (favorite) {
-     removeFromFavorites(productId);
+      removeFromFavorites(productId);
     } else {
       addToFavorites(productId);
     }
@@ -127,24 +151,23 @@ export function ProductCard({
     <Card
       className={cn(
         "overflow-hidden cursor-pointer transition-all hover:shadow-lg active:scale-[0.98]",
+        isOutOfStock && "opacity-75",
         className
       )}
       onClick={handleClick}
     >
       {image && (
-        <div className="aspect-square bg-muted relative overflow-hidden">
-          <Image
-            src={image}
-            alt={name}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-          />
-          {badge && (
+        <div className="bg-muted relative overflow-hidden" style={{ height: 180 }}>
+          <ImageWithSkeleton src={image} alt={name} />
+          {isOutOfStock ? (
+            <Badge className="absolute top-2 left-2" variant="destructive">
+              Out of Stock
+            </Badge>
+          ) : badge ? (
             <Badge className="absolute top-2 left-2" variant="secondary">
               {badge}
             </Badge>
-          )}
+          ) : null}
           <button
             onClick={handleFavoriteClick}
             className="absolute top-2 right-2 p-2 rounded-full bg-background/80 hover:bg-background transition-all"
@@ -152,13 +175,13 @@ export function ProductCard({
             <Heart
               className={cn(
                 "w-5 h-5",
-                favorite ? "fill-red-500 text-red-500" : "text-muted-foreground"
+                favorite ? "fill-error text-error" : "text-muted-foreground"
               )}
             />
           </button>
         </div>
       )}
-      
+
       <CardContent className="p-4">
         {category && (
           <p className="text-xs text-muted-foreground mb-1">{category}</p>
@@ -169,16 +192,28 @@ export function ProductCard({
             {description}
           </p>
         )}
+        {!image && isOutOfStock && (
+          <Badge className="mt-1" variant="destructive">Out of Stock</Badge>
+        )}
       </CardContent>
-      
+
       <CardFooter className="p-4 pt-0 flex items-center justify-between gap-2">
-        <span className="text-lg font-bold">{formattedPrice}</span>
+        <div className="min-w-0">
+          <span className="text-lg font-bold">{formattedPrice}</span>
+          {stockQuantity != null && stockQuantity > 0 && stockQuantity <= 10 && (
+            <p className="text-[11px] text-warning-foreground font-medium leading-tight">
+              {stockQuantity <= 3 ? `Only ${stockQuantity} left` : `${stockQuantity} left`}
+            </p>
+          )}
+        </div>
         <Button
           size="sm"
           onClick={handleAddToCart}
           className="flex-1"
+          disabled={isOutOfStock}
+          variant={isOutOfStock ? "outline" : "default"}
         >
-          Add
+          {isOutOfStock ? 'Sold Out' : 'Add'}
         </Button>
       </CardFooter>
     </Card>

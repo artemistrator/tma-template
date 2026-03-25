@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Page, ComponentInstance } from '@/lib/schema/mini-app-schema';
 import { renderComponents } from './component-registry';
 import { useTelegramContext } from '@/lib/telegram/telegram-provider';
 import { BottomNav } from '@/components/core/bottom-nav';
+import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 
 interface PageRendererProps {
   page: Page;
@@ -16,14 +17,23 @@ export function PageRenderer({ page, dataContext = {}, onNavigate }: PageRendere
   const { showMainButton, hideMainButton, showBackButton, hideBackButton, hapticFeedback } = useTelegramContext();
   const [isLoading, setIsLoading] = useState(true);
 
+  const handleRefresh = useCallback(async () => {
+    // Reload the page by re-triggering hash navigation
+    window.location.reload();
+  }, []);
+
+  const { containerRef, pullDistance, isRefreshing, isReady } = usePullToRefresh({
+    onRefresh: handleRefresh,
+    threshold: 80,
+  });
+
   useEffect(() => {
     // Setup MainButton if configured
     if (page.mainButton?.visible && page.mainButton?.text) {
       showMainButton(page.mainButton.text, () => {
         hapticFeedback.impact('light');
         if (page.mainButton?.action) {
-          // Handle main button action
-          console.log('MainButton action:', page.mainButton.action);
+          // Handle main button action (no-op: action handled by components)
         }
       });
     } else {
@@ -67,7 +77,25 @@ export function PageRenderer({ page, dataContext = {}, onNavigate }: PageRendere
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div ref={containerRef} className="min-h-screen bg-background pb-20 overflow-y-auto">
+      {/* Pull-to-refresh indicator */}
+      {(pullDistance > 0 || isRefreshing) && (
+        <div
+          className="flex items-center justify-center overflow-hidden transition-[height] duration-150"
+          style={{ height: isRefreshing ? 48 : pullDistance }}
+        >
+          <div className={`transition-transform duration-200 ${isReady ? 'rotate-180' : ''}`}>
+            {isRefreshing ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent" />
+            ) : (
+              <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
+
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container mx-auto px-4 py-3">
           <h1 className="text-xl font-semibold">{page.title}</h1>

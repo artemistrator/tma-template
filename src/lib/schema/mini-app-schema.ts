@@ -79,10 +79,45 @@ export const MetaSchema = z.object({
     primaryColor: z.string().optional(),
     secondaryColor: z.string().optional(),
   }).optional(),
+  style: z.object({
+    tone: z.enum(['premium', 'friendly', 'bold', 'minimal']).optional(),
+    density: z.enum(['airy', 'balanced', 'compact']).optional(),
+    visual: z.enum(['soft', 'sharp', 'layered']).optional(),
+  }).optional(),
+  cta: z.object({
+    text: z.string().optional(),
+    sticky: z.boolean().default(true),
+    page: z.string().default('catalog'),
+    secondaryText: z.string().optional(),
+    secondaryAction: z.string().optional(),
+  }).optional(),
   // Multi-tenant fields
   appType: AppTypeSchema.default('ecommerce').describe('Type of business: ecommerce, booking, or infobiz'),
   tenantId: z.string().describe('Unique tenant identifier'),
   slug: z.string().describe('URL-friendly identifier for the tenant'),
+  // Payment & delivery config (passed to frontend, secrets stripped)
+  payments: z.object({
+    methods: z.array(z.enum(['yookassa', 'stars', 'cash'])),
+    testMode: z.boolean().optional(),
+  }).optional(),
+  delivery: z.object({
+    methods: z.array(z.enum(['pickup', 'courier', 'cdek'])),
+    pickupPoints: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      address: z.string(),
+      city: z.string().optional(),
+      phone: z.string().optional(),
+      workingHours: z.string().optional(),
+    })).optional(),
+    courier: z.object({
+      price: z.number(),
+      freeFrom: z.number().optional(),
+      estimatedTime: z.string().optional(),
+      estimatedDays: z.string().optional(),
+      zone: z.string().optional(),
+    }).optional(),
+  }).optional(),
 });
 
 // Flow action schema
@@ -102,9 +137,28 @@ export const FlowSchema = z.object({
   actions: z.array(FlowActionSchema).optional(),
 });
 
+// Features config (feature flags exposed to the frontend)
+export const FeaturesSchema = z.object({
+  reviews: z.object({
+    enabled: z.boolean().optional(),
+    businessReviews: z.boolean().optional(),
+    productReviews: z.boolean().optional(),
+    allowSubmission: z.boolean().optional(),
+    moderation: z.boolean().optional(),
+  }).optional(),
+  assistant: z.object({
+    enabled: z.boolean().optional(),
+    mode: z.string().optional(),
+    botUsername: z.string().optional(),
+    entryCta: z.string().optional(),
+    placement: z.enum(['floating', 'header', 'contacts', 'product_page']).optional(),
+  }).optional(),
+}).optional();
+
 // Main MiniApp Schema
 export const MiniAppSchema = z.object({
   meta: MetaSchema,
+  features: FeaturesSchema,
   dataModel: z.record(z.string(), DataModelEntitySchema).optional(),
   pages: z.array(PageSchema),
   flows: z.array(FlowSchema).optional(),

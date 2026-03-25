@@ -3,10 +3,12 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { EmptyState, emptyIcon } from '@/components/ui/empty-state';
 import { useCartStore } from '@/store/cart-store';
-import Image from 'next/image';
+import { useTranslation } from '@/lib/use-translation';
+import { useOrderStatusSync } from '@/lib/hooks/use-order-status-sync';
 
 interface OrderItem {
   id: string;
@@ -45,23 +47,7 @@ interface OrdersListProps {
   onNavigate?: (pageId: string) => void;
 }
 
-const statusColors: Record<Order['status'] | 'confirmed', string> = {
-  pending: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
-  processing: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  shipped: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-  delivered: 'bg-green-500/10 text-green-500 border-green-500/20',
-  cancelled: 'bg-red-500/10 text-red-500 border-red-500/20',
-  confirmed: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
-};
-
-const statusLabels: Record<Order['status'] | 'confirmed', string> = {
-  pending: 'Pending',
-  processing: 'Processing',
-  shipped: 'Shipped',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
-  confirmed: 'Confirmed',
-};
+// statusLabels built per-render via t() — see inside OrdersList
 
 /**
  * OrdersList - List of order cards
@@ -81,6 +67,20 @@ export function OrdersList({
   onNavigate,
 }: OrdersListProps) {
  const ordersFromStore = useCartStore((state) => state.orders);
+ const addItem = useCartStore((state) => state.addItem);
+ const { t } = useTranslation();
+
+ // Sync order statuses with server
+ useOrderStatusSync();
+
+ const statusLabels: Record<Order['status'] | 'confirmed', string> = {
+   pending: t('status.pending'),
+   processing: t('status.processing'),
+   shipped: t('status.shipped'),
+   delivered: t('status.delivered'),
+   cancelled: t('status.cancelled'),
+   confirmed: t('status.confirmed'),
+ };
 
  // Use store orders if showUserOrdersOnly is true (check both direct prop and nested props)
  const showUserOrdersOnly = props?.showUserOrdersOnly ?? showUserOrdersOnlyProp;
@@ -111,38 +111,18 @@ export function OrdersList({
   }
  };
  
- // Debug logging
- console.log('OrdersList- showUserOrdersOnly:', showUserOrdersOnly);
- console.log('OrdersList- raw props:', props);
- console.log('OrdersList- orders from store:', ordersFromStore.length);
- console.log('OrdersList- displaying orders:', orders.length);
- if (orders.length > 0) {
- console.log('OrdersList- first order:', orders[0]);
- }
- 
  const pageTitle = props?.title || title;
  const pageDescription = props?.description || description;
 
   if (orders.length === 0) {
     return (
-      <div className={cn("text-center py-12", className)} id={id}>
-        <div className="mb-4">
-          <svg
-            className="w-16 h-16 mx-auto text-muted-foreground/50"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-            />
-          </svg>
-        </div>
-        <p className="text-muted-foreground">{emptyMessage}</p>
-      </div>
+      <EmptyState
+        icon={emptyIcon('orders')}
+        title={emptyMessage}
+        description="They will appear here once you make a purchase"
+        action={onNavigate ? { label: 'Browse catalog →', onClick: () => onNavigate('catalog') } : undefined}
+        className={cn(className)}
+      />
     );
   }
 
@@ -176,12 +156,7 @@ export function OrdersList({
                     })}
                   </p>
                 </div>
-                <Badge
-                  variant="outline"
-                  className={cn(statusColors[order.status], 'font-medium')}
-                >
-                  {statusLabels[order.status]}
-                </Badge>
+                <StatusBadge status={order.status} size="sm" />
               </div>
             </CardHeader>
 
@@ -191,12 +166,12 @@ export function OrdersList({
                 {order.items.slice(0, 4).map((item, index) => (
                   <div key={index} className="flex-shrink-0 w-16 h-16 rounded-md bg-muted overflow-hidden">
                    {item.image ? (
-                    <Image
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
                       src={item.image}
                       alt={item.name}
-                      width={64}
-                      height={64}
-                      className="object-cover"
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                     />
                    ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground">
@@ -233,16 +208,47 @@ export function OrdersList({
                   <p className="font-semibold">${order.total.toFixed(2)}</p>
                 </div>
                 <div className="flex gap-2">
-                  {order.status === 'delivered' && (
+                  {/* Ecommerce reorder (delivered) */}
+                  {order.status === 'delivered' && !('bookingService' in order) && (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
+                        order.items.forEach((item) => addItem(item));
                         onReorder?.(order.id);
+                        if (onNavigate) {
+                          onNavigate('cart');
+                        } else {
+                          window.location.hash = 'cart';
+                        }
                       }}
                     >
                       Reorder
+                    </Button>
+                  )}
+                  {/* Booking: book again for confirmed/delivered bookings */}
+                  {(order as unknown as { bookingService?: string }).bookingService && (order.status === 'confirmed' || order.status === 'delivered') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Pre-select the same service in sessionStorage for catalog
+                        if (typeof window !== 'undefined') {
+                          const serviceId = order.items[0]?.id;
+                          if (serviceId) {
+                            sessionStorage.setItem('booking_preselect_service', serviceId);
+                          }
+                        }
+                        if (onNavigate) {
+                          onNavigate('catalog');
+                        } else {
+                          window.location.hash = 'catalog';
+                        }
+                      }}
+                    >
+                      Book again
                     </Button>
                   )}
                   <Button size="sm" onClick={(e) => {

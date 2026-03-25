@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { MiniAppSchemaType } from '@/lib/schema/mini-app-schema';
 import { useCartStore } from '@/store/cart-store';
+import { applyTheme, resetTheme } from '@/lib/theme';
+import { getTenantFromHostname } from '@/lib/tenant';
 
 interface AppConfigContextValue {
   config: MiniAppSchemaType | null;
@@ -21,11 +23,24 @@ interface AppConfigProviderProps {
 }
 
 /**
- * Get tenant slug from URL query parameter
- * Example: ?tenant=pizza or ?tenant=barber
+ * Get tenant slug from URL.
+ *
+ * Resolution order:
+ *   1. Subdomain: pizza.example.com → "pizza"
+ *   2. Query param: ?tenant=pizza
+ *
+ * Subdomain routing is automatic when ROOT_DOMAIN is set
+ * or when using *.localhost in development.
  */
 function getTenantSlugFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
+
+  // 1. Try subdomain
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || '';
+  const fromHostname = getTenantFromHostname(window.location.hostname, rootDomain);
+  if (fromHostname) return fromHostname;
+
+  // 2. Fallback to query param
   const params = new URLSearchParams(window.location.search);
   return params.get('tenant');
 }
@@ -44,8 +59,6 @@ export function AppConfigProvider({ children, defaultTenantSlug = 'pizza' }: App
     setError(null);
 
     try {
-      console.log('[AppConfigProvider] Fetching config for tenant slug:', slug);
-      
       const response = await fetch(`/api/config?tenant=${slug}`, {
         method: 'GET',
         headers: {
@@ -59,26 +72,19 @@ export function AppConfigProvider({ children, defaultTenantSlug = 'pizza' }: App
         throw new Error(data.error || 'Failed to load configuration');
       }
 
-      console.log('[AppConfigProvider] Config loaded successfully:', {
-        tenantSlug: data.tenantSlug,
-        tenantId: data.tenantId,
-        appTitle: data.config.meta.title,
-        appType: data.config.meta.appType,
-      });
-
       // Clear cart when switching tenants
       if (tenantId && data.tenantId !== tenantId) {
-        console.log('[AppConfigProvider] Tenant changed, clearing cart');
         clearCart();
-        // Also clear all cart-related localStorage for this tenant
+        resetTheme();
         if (typeof window !== 'undefined') {
           const keys = Object.keys(localStorage).filter(k => k.includes('cart'));
           keys.forEach(k => localStorage.removeItem(k));
-          console.log('[AppConfigProvider] Cleared cart localStorage');
         }
       }
 
       setConfig(data.config);
+      // Apply tenant theme colors and style preset from config
+      applyTheme(data.config?.meta?.theme, data.config?.meta?.style);
       setTenantSlug(data.tenantSlug);
       setTenantId(data.tenantId);
     } catch (err) {
@@ -97,7 +103,6 @@ export function AppConfigProvider({ children, defaultTenantSlug = 'pizza' }: App
     // Get tenant slug from URL or use default
     const urlSlug = getTenantSlugFromUrl();
     const slug = urlSlug || defaultTenantSlug;
-    console.log('[AppConfigProvider] Initial tenant slug:', slug, '(from URL:', urlSlug, ')');
     loadConfig(slug);
   }, [defaultTenantSlug, loadConfig]);
 
@@ -106,7 +111,6 @@ export function AppConfigProvider({ children, defaultTenantSlug = 'pizza' }: App
     const handleHashChange = () => {
       const urlSlug = getTenantSlugFromUrl();
       if (urlSlug && urlSlug !== tenantSlug) {
-        console.log('[AppConfigProvider] Tenant changed via URL:', urlSlug);
         loadConfig(urlSlug);
       }
     };

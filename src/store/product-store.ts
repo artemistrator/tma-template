@@ -13,27 +13,31 @@ export interface Product {
 interface ProductState {
   // Search
   searchQuery: string;
-  
+
   // Filters
   selectedCategories: string[];
   priceRange: [number, number];
-  
-  // All products (for filtering)
+
+  // All products (for filtering and lookup)
   allProducts: Product[];
-  
+
+  // Currently selected product (set before navigating to product-details)
+  selectedProduct: Product | null;
+
   // Actions
   setSearchQuery: (query: string) => void;
   clearSearch: () => void;
-  
+
   toggleCategory: (categoryId: string) => void;
   clearCategories: () => void;
-  
+
   setPriceRange: (range: [number, number]) => void;
   resetPriceRange: (min: number, max: number) => void;
   clearAllFilters: () => void;
-  
+
   setAllProducts: (products: Product[]) => void;
-  
+  setSelectedProduct: (product: Product | null) => void;
+
   // Get filtered products
   getFilteredProducts: () => Product[];
 }
@@ -43,6 +47,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
   selectedCategories: [],
   priceRange: [0, 1000],
   allProducts: [],
+  selectedProduct: null,
 
   setSearchQuery: (query: string) => {
     set({ searchQuery: query });
@@ -82,6 +87,10 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
   setAllProducts: (products: Product[]) => {
     set({ allProducts: products });
+  },
+
+  setSelectedProduct: (product: Product | null) => {
+    set({ selectedProduct: product });
   },
 
   getFilteredProducts: () => {

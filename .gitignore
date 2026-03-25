@@ -41,3 +41,12 @@ Thumbs.db
 docker-compose*.yml
 Dockerfile
 .dockerignore
+
+# Orchestrator data (analytics, etc.)
+.orchestrator-data/
+
+# Backups (contain database dumps with sensitive data)
+backups/
+
+# Direct configs (runtime generated)
+.data/

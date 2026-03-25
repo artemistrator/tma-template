@@ -1,5 +1,6 @@
 import React from 'react';
 import { ComponentInstance } from '@/lib/schema/mini-app-schema';
+import { ComponentErrorBoundary } from '@/components/core/error-boundary';
 
 // Component type mapping
 export type ComponentType =
@@ -21,6 +22,36 @@ export type ComponentType =
   | 'ProductDetails'
   | 'SearchBar'
   | 'FilterPanel'
+  | 'CategoryGrid'
+  // Booking module
+  | 'ServiceList'
+  | 'BookingCheckoutForm'
+  | 'BookingSuccess'
+  | 'BookingCalendar'
+  | 'TimeSlots'
+  | 'StaffList'
+  | 'WorkingHours'
+  // Infobiz module
+  | 'InfoProductList'
+  | 'InfoProductDetails'
+  | 'LeadCaptureForm'
+  | 'InfobizCheckout'
+  | 'AuthorBio'
+  | 'StatsRow'
+  | 'FaqAccordion'
+  // Shared marketing components
+  | 'HeroBanner'
+  | 'FeaturesList'
+  | 'Testimonials'
+  | 'RichText'
+  | 'BannerCta'
+  | 'ContactsBlock'
+  | 'StickyCtaBar'
+  // Reviews
+  | 'ReviewsList'
+  | 'ReviewSummary'
+  // Assistant
+  | 'FloatingAssistantButton'
   | 'Button'
   | 'Input'
   | 'List'
@@ -75,31 +106,47 @@ export function getRegisteredComponents(): ComponentType[] {
 }
 
 /**
- * Dynamic component renderer
+ * Fallback UI for components whose `type` is not found in the registry.
+ * In production this renders nothing (invisible to end users).
+ * In development it shows a visible placeholder for debugging.
+ */
+function UnknownComponentFallback({ type }: { type?: string }) {
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
+
+  return (
+    <div className="p-3 my-2 text-center text-xs rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 text-muted-foreground">
+      Unknown component: &quot;{type}&quot;
+    </div>
+  );
+}
+
+/**
+ * Dynamic component renderer — wraps every component in an ErrorBoundary
+ * so that a crash in one component does not take down the entire page.
  */
 export function DynamicComponent({ type, props = {}, binding, children, id, className, onNavigate }: ComponentFactoryProps) {
   const Component = componentRegistry.get(type as ComponentType);
 
   if (!Component) {
     console.warn(`Component "${type}" is not registered in the factory`);
-    return (
-      <div className="p-4 text-center text-red-500 border border-red-200 rounded">
-        Component &quot;{type}&quot; not found
-      </div>
-    );
+    return <UnknownComponentFallback type={type} />;
   }
 
   return (
-    <Component
-      id={id}
-      type={type}
-      props={props}
-      binding={binding}
-      className={className}
-      onNavigate={onNavigate}
-    >
-      {children}
-    </Component>
+    <ComponentErrorBoundary componentType={type} componentId={id}>
+      <Component
+        id={id}
+        type={type}
+        props={props}
+        binding={binding}
+        className={className}
+        onNavigate={onNavigate}
+      >
+        {children}
+      </Component>
+    </ComponentErrorBoundary>
   );
 }
 

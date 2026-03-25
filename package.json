@@ -3,16 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3009",
+    "dev:turbo": "next dev --turbo -p 3009",
+    "preview": "next build && next start -p 3009",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3009",
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "setup:db": "tsx scripts/setup-directus.ts",
     "seed:db": "tsx scripts/seed-data-simple.ts",
-    "seed:db:full": "tsx scripts/recreate-collections.ts && tsx scripts/seed-data-simple.ts"
+    "seed:db:full": "tsx scripts/recreate-collections.ts && tsx scripts/seed-data-simple.ts",
+    "init:db": "tsx scripts/init-directus.ts",
+    "init:permissions": "tsx scripts/setup-permissions.ts",
+    "init:all": "tsx scripts/init-directus.ts && tsx scripts/setup-permissions.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -29,6 +34,7 @@
     "react": "^18",
     "react-day-picker": "^9.14.0",
     "react-dom": "^18",
+    "recharts": "^3.8.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^4.3.6",

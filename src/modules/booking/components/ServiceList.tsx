@@ -4,9 +4,27 @@ import React from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useCartStore } from '@/store/cart-store';
 import Image from 'next/image';
+
+function ImageWithSkeleton({ src, alt }: { src: string; alt: string }) {
+  const [loaded, setLoaded] = React.useState(false);
+  return (
+    <>
+      {!loaded && <Skeleton className="absolute inset-0 rounded-none" />}
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        unoptimized
+        className={cn('object-cover transition-opacity duration-300', loaded ? 'opacity-100' : 'opacity-0')}
+        onLoad={() => setLoaded(true)}
+      />
+    </>
+  );
+}
 
 export interface Service {
   id: string | number;
@@ -31,6 +49,7 @@ interface ServiceListProps {
     columns?: 1 | 2 | 3;
   };
   columns?: 1 | 2 | 3;
+  loading?: boolean;
   onServiceClick?: (serviceId: string) => void;
   onBook?: (serviceId: string) => void;
   className?: string;
@@ -44,6 +63,7 @@ export function ServiceList({
   data: directData,
   props,
   columns = 2,
+  loading = false,
   onServiceClick,
   className,
   emptyMessage = "No services available",
@@ -57,6 +77,35 @@ export function ServiceList({
 
   const gridCols = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3" };
 
+  if (loading) {
+    return (
+      <div className={cn("space-y-4", className)} id={id}>
+        {(title || description) && (
+          <div>
+            <Skeleton className="h-7 w-40 mb-2" />
+            <Skeleton className="h-4 w-56" />
+          </div>
+        )}
+        <div className={cn("grid gap-4", gridCols[pageColumns])}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-lg border overflow-hidden">
+              <Skeleton className="h-[180px] w-full" />
+              <div className="p-4 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+              <div className="p-4 pt-0 flex items-center justify-between">
+                <Skeleton className="h-6 w-16" />
+                <Skeleton className="h-9 w-24 rounded-md" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const handleAddToCart = (service: Service, e: React.MouseEvent) => {
     e.stopPropagation();
     addItem({
@@ -66,7 +115,6 @@ export function ServiceList({
       description: service.description,
       category: service.category,
     }, 1);
-    console.log('Added to cart:', service.name);
   };
 
   if (data.length === 0) {
@@ -99,8 +147,8 @@ export function ServiceList({
             onClick={() => onServiceClick?.(String(service.id))}
           >
             {service.image && (
-              <div className="aspect-square bg-muted relative overflow-hidden">
-                <Image src={service.image} alt={service.name} fill className="object-cover" sizes="(max-width: 768px) 50vw" />
+              <div className="bg-muted relative overflow-hidden" style={{ height: 180 }}>
+                <ImageWithSkeleton src={service.image} alt={service.name} />
                 {service.badge && <Badge className="absolute top-2 left-2" variant="secondary">{service.badge}</Badge>}
               </div>
             )}

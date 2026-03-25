@@ -44,9 +44,9 @@ export function OrderFailed({ error, onRetry, onBack }: OrderFailedProps) {
       <main className="container mx-auto px-4 py-6">
         <div className="max-w-md mx-auto">
           {/* Error Icon */}
-          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-red-100 flex items-center justify-center">
+          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-error-bg flex items-center justify-center">
             <svg
-              className="w-12 h-12 text-red-600"
+              className="w-12 h-12 text-error-foreground"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -77,7 +77,7 @@ export function OrderFailed({ error, onRetry, onBack }: OrderFailedProps) {
                 </div>
               )}
 
-              <div className="text-left p-4 bg-yellow-50 text-yellow-800 rounded-lg text-sm">
+              <div className="text-left p-4 bg-warning-bg text-warning-foreground rounded-lg text-sm">
                 <p className="font-semibold mb-2">Don&apos;t worry!</p>
                 <p>Your cart has been saved. You can try again or continue shopping.</p>
               </div>

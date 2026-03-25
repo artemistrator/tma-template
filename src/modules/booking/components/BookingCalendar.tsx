@@ -3,6 +3,7 @@
 import React from 'react';
 import { DayPicker } from 'react-day-picker';
 import { cn } from '@/lib/utils';
+import { useAppConfig } from '@/context/app-config-context';
 
 // Import react-day-picker styles
 import 'react-day-picker/dist/style.css';
@@ -28,6 +29,26 @@ export function BookingCalendar({
   maxDate,
   className,
 }: BookingCalendarProps) {
+  const { config } = useAppConfig();
+  const [blockedDateStringsFromApi, setBlockedDateStringsFromApi] = React.useState<Set<string>>(new Set());
+  const [dayOffWeekdays, setDayOffWeekdays] = React.useState<Set<number>>(new Set());
+
+  // Fetch blocked dates and day-off weekdays on mount
+  React.useEffect(() => {
+    const tenantId = config?.meta?.slug;
+    if (!tenantId) return;
+
+    fetch(`/api/bookings/blocked-dates?tenantId=${tenantId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setBlockedDateStringsFromApi(new Set((data.blockedDates as { date: string }[]).map(b => b.date)));
+          setDayOffWeekdays(new Set(data.dayOffWeekdays as number[]));
+        }
+      })
+      .catch(e => console.warn('[BookingCalendar] Could not fetch blocked dates:', e));
+  }, [config?.meta?.slug]);
+
   // Convert booked dates to date strings for comparison
   const bookedDateStrings = React.useMemo(() => {
     return new Set(bookedDates.map(d => d.toISOString().split('T')[0]));
@@ -160,6 +181,13 @@ export function BookingCalendar({
             --rdp-day-font-size: 13px;
           }
         }
+
+        @media (max-width: 380px) {
+          .booking-calendar {
+            --rdp-day-size: 32px;
+            --rdp-day-font-size: 12px;
+          }
+        }
       `}</style>
 
       <DayPicker
@@ -172,7 +200,11 @@ export function BookingCalendar({
         }}
         disabled={(date) => {
           const dateStr = date.toISOString().split('T')[0];
-          return bookedDateStrings.has(dateStr);
+          return (
+            bookedDateStrings.has(dateStr) ||
+            blockedDateStringsFromApi.has(dateStr) ||
+            dayOffWeekdays.has(date.getDay())
+          );
         }}
         minDate={minDate || new Date()}
         maxDate={maxDate}

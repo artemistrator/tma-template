@@ -5,6 +5,7 @@ const config: Config = {
     content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/modules/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
@@ -49,7 +50,31 @@ const config: Config = {
   				'3': 'hsl(var(--chart-3))',
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
+  			},
+  			success: {
+  				DEFAULT: 'hsl(var(--color-success))',
+  				bg: 'hsl(var(--color-success-bg))',
+  				foreground: 'hsl(var(--color-success-foreground))'
+  			},
+  			warning: {
+  				DEFAULT: 'hsl(var(--color-warning))',
+  				bg: 'hsl(var(--color-warning-bg))',
+  				foreground: 'hsl(var(--color-warning-foreground))'
+  			},
+  			info: {
+  				DEFAULT: 'hsl(var(--color-info))',
+  				bg: 'hsl(var(--color-info-bg))',
+  				foreground: 'hsl(var(--color-info-foreground))'
+  			},
+  			error: {
+  				DEFAULT: 'hsl(var(--color-error))',
+  				bg: 'hsl(var(--color-error-bg))',
+  				foreground: 'hsl(var(--color-error-foreground))'
   			}
+  		},
+  		boxShadow: {
+  			card: 'var(--shadow-card, 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1))',
+  			button: 'var(--shadow-button, 0 1px 2px 0 rgb(0 0 0 / 0.05))'
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
